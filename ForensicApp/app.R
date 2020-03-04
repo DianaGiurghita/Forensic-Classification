@@ -80,9 +80,9 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                           
                           tabPanel("Credits", 
                                    tags$br(),
-                                   "This app was developed by Diana Giurghita, Giulia Biosa, 
-                                   Eugenio Alladio and Tereza Neocleous, with contributions 
-                                   from Tejaswini Reddy. We thank ", tags$em("Dimitra Eleftheriou"), " and ",
+                                   "This app was developed by Diana Giurghita,  with contributions from 
+                                    Giulia Biosa, Eugenio Alladio, Tereza Neocleous and Tejaswini Reddy. 
+                                    We thank ", tags$em("Dimitra Eleftheriou"), " and ",
                                     tags$a( href ="https://chenjr-jacob.idv.tw", "Jacob Chen"), 
                                     "whose shiny apps were used as a reference."
                                    )
