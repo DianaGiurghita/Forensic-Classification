@@ -180,7 +180,7 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                         bsCollapse(id = "collapseExample", open = "Panel 2",
                                     bsCollapsePanel("Advanced options",
                                        # numericInput("CvFold", "Enter the cross validation fold", 1, min = 1 ),
-                                        numericInput("DataSplit", "Enter the training percentage split", 50, min = 1),
+                                        numericInput("DataSplit", "Enter the training percentage split", 80, min = 1),
                                         numericInput("RandSeed", "Enter random seed number", 23, min = 0 )  )
                                    ),
                        # bsTooltip("CvFold", "This number represents the 'k' in k-fold cross validation", placement = "bottom", trigger = "hover",
@@ -254,9 +254,6 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                                           #"TBC - user can choose what plot they want to display the predicted data"
                                             )
                             ),
-
-
-
 
                     tabPanel(h5(strong("R output")),
 
@@ -634,10 +631,19 @@ server <- function( input, output, session) {
 
     ### Generate dataset table to display the data upladed for prediction
     output$PredDataTab <- renderDataTable( {
-        dataset <- cbind( Prediction = ClassRes$prediction$class, LR =  ClassRes$prediction$LR, datasetPred() )
+        dataset <- cbind( Prediction = ClassRes$prediction$class, LR =  round(ClassRes$prediction$LR, 5), datasetPred() )
         DT::datatable (dataset, rownames = F,
                        options = list(lengthMenu = c(5, 10, 15),
-                                      pageLength = 5, scrollX = TRUE,  dom = 't'))
+                                      pageLength = 5, scrollX = TRUE,  dom = 't'),
+                       callback = JS("
+            var tips = [             'Predicted class label using the model chosen',
+                                     'Likelihood Ratio - currently only available for binary classification'
+                                         ],
+                                     header = table.columns().header();
+                                     for (var i = 0; i < 2; i++) {
+                                     $(header[i]).attr('title', tips[i]);
+                                     }
+                                     "))
     } )
 
 
@@ -778,15 +784,14 @@ server <- function( input, output, session) {
     } )
     
     # Prediction data plot
-    output$PredPlot <- renderPlot (
+    output$PredPlot <- renderPlot(
         {
             predSet <- cbind ( datasetPred(), ClassRes$prediction$class )
             colnames( predSet) [ length( colnames( predSet ))] <- input$varXm
             ggplot( data = ClassRes$training_dataset, aes ( x = !!input$varXp , y = !!input$varYp) ) +
                 geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varC, shape = '20')) +
                 geom_point( data = predSet, aes( x = !!input$varXp , y =  !!input$varYp, colour = !!input$varC, shape = '8'), size = 4) +
-                scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'predicted'), values = c(20, 8)) #+
-            #   geom_text ( data = predSet, aes( label =!!input$varC), check_overlap = TRUE, angle = 45, size = 3)
+                scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'predicted'), values = c(20, 8)) 
 
         } )
 

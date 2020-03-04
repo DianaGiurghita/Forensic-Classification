@@ -1,10 +1,10 @@
 Immediate fixes (for paper deadline):
 - [FIXED] classification summary not working as intended
 - [ADDED] classification plot that shows training data, testing data and misclassified observations
--
+- [ADDED] LR calculations for predicted data in the classification tab [for binary data only]
 
 
 
 Additional fixes/features for later:
 - additional methods for classification: knn, naive Bayes, random forests, neural networks etc.
--
+- use plotly for interactive graphics 
