@@ -83,7 +83,11 @@ ui <- navbarPage( theme = shinytheme("flatly"),
     tabPanel(title = "Data",
              icon = icon( "database"),
 
-
+             # To hide all rd error messages in the app - uncomment this 
+             # tags$style(type="text/css",
+             #            ".shiny-output-error { visibility: hidden; }",
+             #            ".shiny-output-error:before { visibility: hidden; }"
+             # ),
              sidebarLayout(
                 sidebarPanel(width = 3,
 
@@ -508,6 +512,7 @@ server <- function( input, output, session) {
        ClassRes$seed <- NULL    # make output dependant on seed if user chooses to input a seed
        ClassRes$confusion_matrix <- NULL
        ClassRes$prediction <- NULL
+       ClassRes$summary <- NULL
 
     # Selecting variables for class and predictors
 
@@ -543,19 +548,28 @@ server <- function( input, output, session) {
         ClassRes$training_dataset <- as.data.frame(ClassRes$data[1])
         ClassRes$testing_dataset  <- as.data.frame(ClassRes$data[2])
 
+    
         # fit selected model
         switch(input$method,
                "LDA" =  {ClassRes$model <-  RunLDA( input$varXm, input$varYm, ClassRes$training_dataset  )
-                         ClassRes$testing_result <- EvaluateLDA( ClassRes$model, ClassRes$testing_dataset ) },
+                         ClassRes$testing_result <- EvaluateLDA( ClassRes$model, ClassRes$testing_dataset )
+                         #ClassRes$summary <- ClassRes$model 
+                         },
 
                "QDA" =  {ClassRes$model <-  RunQDA( input$varXm, input$varYm, ClassRes$training_dataset  )
-                         ClassRes$testing_result <- EvaluateQDA( ClassRes$model, ClassRes$testing_dataset )},
+                         ClassRes$testing_result <- EvaluateQDA( ClassRes$model, ClassRes$testing_dataset )
+                        # ClassRes$summary <- ClassRes$model 
+                         },
 
                "Logistic regression" = {ClassRes$model <-  RunLR( input$varXm, input$varYm, ClassRes$training_dataset  )
-                                        ClassRes$testing_result <- EvaluateLR( ClassRes$model, ClassRes$testing_dataset )},
+                                        ClassRes$testing_result <- EvaluateLR( ClassRes$model, ClassRes$testing_dataset )
+                                        #ClassRes$summary <- summary( ClassRes$model) 
+                                        },
 
                "Firth logistic regression" = {ClassRes$model <-  RunLRF( input$varXm, input$varYm, ClassRes$training_dataset )
-                                              ClassRes$testing_result <- EvaluateLRF( ClassRes$model, ClassRes$testing_dataset )},
+                                              ClassRes$testing_result <- EvaluateLRF( ClassRes$model, ClassRes$testing_dataset )
+                                             # ClassRes$summary <- summary( ClassRes$model)
+                                              },
 
                "Multinomial logistic regression" =  {ClassRes$model <-  RunMLR( input$varXm, input$varYm, ClassRes$training_dataset )
                                                      ClassRes$testing_result <- EvaluateMLR( ClassRes$model, ClassRes$testing_dataset )} #,
@@ -569,6 +583,29 @@ server <- function( input, output, session) {
 
     })
 
+    # Results - show specific output for each method !
+    # currently displays a summary of each model
+    
+    observeEvent( input$GoClassify, {
+    output$ClassOutput <- renderPrint ({
+        switch( isolate(input$method),
+               "LDA" =  { print( ClassRes$model)  },
+               "QDA" =  { print( ClassRes$model)  },
+               "Logistic regression" = { print( summary( ClassRes$model) ) },
+               "Firth logistic regression" = { print( summary( ClassRes$model) )  },
+               "Multinomial logistic regression" =  { print( summary( ClassRes$model) )
+                   print(  " p-values ")
+                   print( ClassRes$model$pval )  } #,
+               # "kNN" = {print("TBC") },
+               # "SVM" = {print("TBC") },
+               # "Random forest" = { print("TBC") },
+               # "Decision trees" = {print("TBC") },
+               # "Naive Bayes classifier" = {print("TBC") },
+               # "Neural networks" = {print("TBC") }
+        )
+    }) 
+    })
+    
     # Render model output for the last tab
     output$AnalysisRes <- renderPrint( {
          print( paste ("Random seed set to: ", ClassRes$seed))
@@ -624,27 +661,7 @@ server <- function( input, output, session) {
     } )
 
 
-    # Results - show specific output for each method !
-    # currently displays a summary of each model
 
-    output$ClassOutput <- renderPrint ({
-        switch(input$GoClassify,
-               "LDA" =  { print( ClassRes$model)  },
-               "QDA" =  { print( ClassRes$model)  },
-               "Logistic regression" = { print( summary( ClassRes$model) ) },
-               "Firth logistic regression" = { print( summary( ClassRes$model) )  },
-               "Multinomial logistic regression" =  { print( summary( ClassRes$model) )
-                                                      print(  " p-values ")
-                                                      print( ClassRes$model$pval )  } #,
-               # "kNN" = {print("TBC") },
-               # "SVM" = {print("TBC") },
-               # "Random forest" = { print("TBC") },
-               # "Decision trees" = {print("TBC") },
-               # "Naive Bayes classifier" = {print("TBC") },
-               # "Neural networks" = {print("TBC") }
-        )
-
-    })
 
     # Make specific tabs active when clicking predict and analysis/go buttons
     observeEvent( input$GoClassify, {
@@ -684,7 +701,7 @@ server <- function( input, output, session) {
 
     # Classification measures and confusion matrix (buggy for uploaded dataset)
     output$ConfMat   <- renderDataTable( {
-
+        
         cm <- confusionMatrix(  reference = ClassRes$testing_dataset[ , input$varXm] , data = as.factor( ClassRes$testing_result$class ) )
         mtable <- NULL
         for ( i in 1 :  length( levels(ClassRes$testing_dataset[ , input$varXm] )))

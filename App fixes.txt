@@ -1,5 +1,5 @@
 Immediate fixes (for paper deadline):
-- 
+- [FIXED] classification summary not working as intended
 - 
 
 
