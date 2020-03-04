@@ -1,9 +1,10 @@
 Immediate fixes (for paper deadline):
 - [FIXED] classification summary not working as intended
-- 
-
-
-
-Additional fixes for later:
+- [ADDED] classification plot that shows training data, testing data and misclassified observations
 -
+
+
+
+Additional fixes/features for later:
+- additional methods for classification: knn, naive Bayes, random forests, neural networks etc.
 -

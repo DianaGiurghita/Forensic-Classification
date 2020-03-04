@@ -22,6 +22,7 @@ library(comparison)
 library(mlbench)
 library(nnet)
 library(gridExtra)
+library(plotly)
 
 # set working directory and source functions_rshiny.R
 source("functions_rshiny.R")
@@ -224,7 +225,9 @@ ui <- navbarPage( theme = shinytheme("flatly"),
 
                     tabPanel(h5(strong("Plots")),
                                   splitLayout(
-                                      uiOutput( "ClassPlot")
+                                      plotOutput("ClassPlot") %>% withSpinner(color="#0dc5c1")
+                                      
+                                     # uiOutput( "ClassPlot")
                                     )
                                   ),
 
@@ -512,7 +515,6 @@ server <- function( input, output, session) {
        ClassRes$seed <- NULL    # make output dependant on seed if user chooses to input a seed
        ClassRes$confusion_matrix <- NULL
        ClassRes$prediction <- NULL
-       ClassRes$summary <- NULL
 
     # Selecting variables for class and predictors
 
@@ -552,24 +554,16 @@ server <- function( input, output, session) {
         # fit selected model
         switch(input$method,
                "LDA" =  {ClassRes$model <-  RunLDA( input$varXm, input$varYm, ClassRes$training_dataset  )
-                         ClassRes$testing_result <- EvaluateLDA( ClassRes$model, ClassRes$testing_dataset )
-                         #ClassRes$summary <- ClassRes$model 
-                         },
+                         ClassRes$testing_result <- EvaluateLDA( ClassRes$model, ClassRes$testing_dataset ) },
 
                "QDA" =  {ClassRes$model <-  RunQDA( input$varXm, input$varYm, ClassRes$training_dataset  )
-                         ClassRes$testing_result <- EvaluateQDA( ClassRes$model, ClassRes$testing_dataset )
-                        # ClassRes$summary <- ClassRes$model 
-                         },
+                         ClassRes$testing_result <- EvaluateQDA( ClassRes$model, ClassRes$testing_dataset ) },
 
                "Logistic regression" = {ClassRes$model <-  RunLR( input$varXm, input$varYm, ClassRes$training_dataset  )
-                                        ClassRes$testing_result <- EvaluateLR( ClassRes$model, ClassRes$testing_dataset )
-                                        #ClassRes$summary <- summary( ClassRes$model) 
-                                        },
+                                        ClassRes$testing_result <- EvaluateLR( ClassRes$model, ClassRes$testing_dataset ) },
 
                "Firth logistic regression" = {ClassRes$model <-  RunLRF( input$varXm, input$varYm, ClassRes$training_dataset )
-                                              ClassRes$testing_result <- EvaluateLRF( ClassRes$model, ClassRes$testing_dataset )
-                                             # ClassRes$summary <- summary( ClassRes$model)
-                                              },
+                                              ClassRes$testing_result <- EvaluateLRF( ClassRes$model, ClassRes$testing_dataset ) },
 
                "Multinomial logistic regression" =  {ClassRes$model <-  RunMLR( input$varXm, input$varYm, ClassRes$training_dataset )
                                                      ClassRes$testing_result <- EvaluateMLR( ClassRes$model, ClassRes$testing_dataset )} #,
@@ -593,9 +587,9 @@ server <- function( input, output, session) {
                "QDA" =  { print( ClassRes$model)  },
                "Logistic regression" = { print( summary( ClassRes$model) ) },
                "Firth logistic regression" = { print( summary( ClassRes$model) )  },
-               "Multinomial logistic regression" =  { print( summary( ClassRes$model) )
-                   print(  " p-values ")
-                   print( ClassRes$model$pval )  } #,
+               "Multinomial logistic regression" =  {   print( summary( ClassRes$model) )
+                                                        print(  " p-values ")
+                                                        print( ClassRes$model$pval )  } #,
                # "kNN" = {print("TBC") },
                # "SVM" = {print("TBC") },
                # "Random forest" = { print("TBC") },
@@ -667,13 +661,11 @@ server <- function( input, output, session) {
     observeEvent( input$GoClassify, {
         updateTabsetPanel(session, "AnalysisSummaries",
                           selected = "tAnalysis")
-
     })
 
     observeEvent( input$GoPredUpload, {
         updateTabsetPanel(session, "AnalysisSummaries",
                           selected = "tPred")
-
     })
 
     observeEvent( input$checkNum | input$checkCat, {
@@ -690,7 +682,6 @@ server <- function( input, output, session) {
     observeEvent( input$GoEvidence, {
         updateTabsetPanel(session, "EvidenceResults",
                           selected = "tEviRes")
-
     })
 
     observeEvent( input$GoEvidPredUpload, {
@@ -760,6 +751,32 @@ server <- function( input, output, session) {
             )
     } )
 
+    # Prediction data plot
+    output$ClassPlot <- renderPlot (
+        {   
+            # training dataset points
+            set1 <- ClassRes$training_dataset
+            
+            # testing dataset points with the model predicted class
+            set2 <- ClassRes$testing_dataset 
+            set2[, input$varXm] <- ClassRes$testing_result$class
+            
+            # Misclassfied observations
+            set3 <- subset( ClassRes$testing_dataset, ClassRes$testing_dataset [, input$varXm ]!= ClassRes$testing_result$class)
+      
+            if ( nrow(set3) != 0 )
+                ggplot( data = set1, aes ( x = !!input$varXp , y = !!input$varYp) ) +
+                geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varC, shape = '20')) +
+                geom_point( data = set2, aes( x = !!input$varXp , y =  !!input$varYp, colour = !!input$varC, shape = '8'), size = 4) +
+                geom_point( data = set3, aes( x = !!input$varXp , y =  !!input$varYp , colour =!!input$varC, shape ='diamond open'), size = 3) +
+                scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'testing', 'misclassified'), values = c('circle', 'asterisk', 'diamond open')) 
+            else
+                ggplot( data = set1, aes ( x = !!input$varXp , y = !!input$varYp) ) +
+                geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varC, shape = '20')) +
+                geom_point( data = set2, aes( x = !!input$varXp , y =  !!input$varYp, colour = !!input$varC, shape = '8'), size = 4) +
+                scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'testing'), values = c('circle', 'asterisk')) 
+    } )
+    
     # Prediction data plot
     output$PredPlot <- renderPlot (
         {
