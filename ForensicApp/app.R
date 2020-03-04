@@ -22,6 +22,7 @@ library(comparison)
 library(mlbench)
 library(nnet)
 library(gridExtra)
+library(plotly)
 
 # set working directory and source functions_rshiny.R 
 source("functions_rshiny.R")
@@ -93,8 +94,12 @@ ui <- navbarPage( theme = shinytheme("flatly"),
     # Data tab
     tabPanel(title = "Data", 
              icon = icon( "database"),
-             
-             
+
+             # To hide all rd error messages in the app - uncomment this 
+             # tags$style(type="text/css",
+             #            ".shiny-output-error { visibility: hidden; }",
+             #            ".shiny-output-error:before { visibility: hidden; }"
+             # ),
              sidebarLayout(
                 sidebarPanel(width = 3,
              
@@ -183,11 +188,11 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                                                                  )),
                         uiOutput("VariableSelectX"),
                         uiOutput("VariableSelectY"),
-                            
-                        bsCollapse(id = "collapseExample", open = "Panel 2", 
-                                    bsCollapsePanel("Cross-validation options", 
-                                       # numericInput("CvFold", "Enter the cross validation fold", 1, min = 1 ),                         
-                                        numericInput("DataSplit", "Enter the training percentage split", 50, min = 1),
+
+                        bsCollapse(id = "collapseExample", open = "Panel 2",
+                                    bsCollapsePanel("Advanced options",
+                                       # numericInput("CvFold", "Enter the cross validation fold", 1, min = 1 ),
+                                        numericInput("DataSplit", "Enter the training percentage split", 80, min = 1),
                                         numericInput("RandSeed", "Enter random seed number", 23, min = 0 )  )
                                    ),
                        # bsTooltip("CvFold", "This number represents the 'k' in k-fold cross validation", placement = "bottom", trigger = "hover",
@@ -232,7 +237,9 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                         
                     tabPanel(h5(strong("Plots")),
                                   splitLayout(
-                                      uiOutput( "ClassPlot")
+                                      plotOutput("ClassPlot") %>% withSpinner(color="#0dc5c1")
+                                      
+                                     # uiOutput( "ClassPlot")
                                     )
                                   ),
         
@@ -259,10 +266,7 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                                           #"TBC - user can choose what plot they want to display the predicted data"
                                             )
                             ),
-                                  
-                                  
-                                  
-                                 
+
                     tabPanel(h5(strong("R output")),
                                   
                                   verbatimTextOutput("AnalysisRes")
@@ -550,21 +554,22 @@ server <- function( input, output, session) {
         ClassRes$data <- DataTrainTest( data = datasetInput(), per = input$DataSplit)
         ClassRes$training_dataset <- as.data.frame(ClassRes$data[1])
         ClassRes$testing_dataset  <- as.data.frame(ClassRes$data[2])
-        
+
+    
         # fit selected model
         switch(input$method,
                "LDA" =  {ClassRes$model <-  RunLDA( input$varXm, input$varYm, ClassRes$training_dataset  )
                          ClassRes$testing_result <- EvaluateLDA( ClassRes$model, ClassRes$testing_dataset ) },
-               
-               "QDA" =  {ClassRes$model <-  RunQDA( input$varXm, input$varYm, ClassRes$training_dataset  ) 
-                         ClassRes$testing_result <- EvaluateQDA( ClassRes$model, ClassRes$testing_dataset )},
-               
+
+               "QDA" =  {ClassRes$model <-  RunQDA( input$varXm, input$varYm, ClassRes$training_dataset  )
+                         ClassRes$testing_result <- EvaluateQDA( ClassRes$model, ClassRes$testing_dataset ) },
+
                "Logistic regression" = {ClassRes$model <-  RunLR( input$varXm, input$varYm, ClassRes$training_dataset  )
-                                        ClassRes$testing_result <- EvaluateLR( ClassRes$model, ClassRes$testing_dataset )},
-               
+                                        ClassRes$testing_result <- EvaluateLR( ClassRes$model, ClassRes$testing_dataset ) },
+
                "Firth logistic regression" = {ClassRes$model <-  RunLRF( input$varXm, input$varYm, ClassRes$training_dataset )
-                                              ClassRes$testing_result <- EvaluateLRF( ClassRes$model, ClassRes$testing_dataset )},
-                                                                                
+                                              ClassRes$testing_result <- EvaluateLRF( ClassRes$model, ClassRes$testing_dataset ) },
+
                "Multinomial logistic regression" =  {ClassRes$model <-  RunMLR( input$varXm, input$varYm, ClassRes$training_dataset )
                                                      ClassRes$testing_result <- EvaluateMLR( ClassRes$model, ClassRes$testing_dataset )} #, 
                # "kNN" = {ClassRes$model <- RunKNN(  )}, 
@@ -575,6 +580,29 @@ server <- function( input, output, session) {
                # "Neural networks" = {ClassRes$model <- RunNN(   )} 
                )
     
+    })
+
+    # Results - show specific output for each method !
+    # currently displays a summary of each model
+    
+    observeEvent( input$GoClassify, {
+    output$ClassOutput <- renderPrint ({
+        switch( isolate(input$method),
+               "LDA" =  { print( ClassRes$model)  },
+               "QDA" =  { print( ClassRes$model)  },
+               "Logistic regression" = { print( summary( ClassRes$model) ) },
+               "Firth logistic regression" = { print( summary( ClassRes$model) )  },
+               "Multinomial logistic regression" =  {   print( summary( ClassRes$model) )
+                                                        print(  " p-values ")
+                                                        print( ClassRes$model$pval )  } #,
+               # "kNN" = {print("TBC") },
+               # "SVM" = {print("TBC") },
+               # "Random forest" = { print("TBC") },
+               # "Decision trees" = {print("TBC") },
+               # "Naive Bayes classifier" = {print("TBC") },
+               # "Neural networks" = {print("TBC") }
+        )
+    }) 
     })
     
     # Render model output for the last tab
@@ -610,11 +638,20 @@ server <- function( input, output, session) {
         } )
     
     ### Generate dataset table to display the data upladed for prediction
-    output$PredDataTab <- renderDataTable( { 
-        dataset <- cbind( Prediction = ClassRes$prediction$class, LR = ClassRes$prediction$LR, datasetPred() )
+    output$PredDataTab <- renderDataTable( {
+        dataset <- cbind( Prediction = ClassRes$prediction$class, LR =  round(ClassRes$prediction$LR, 5), datasetPred() )
         DT::datatable (dataset, rownames = F,
-                       options = list(lengthMenu = c(5, 10, 15), 
-                                      pageLength = 5, scrollX = TRUE,  dom = 't'))   
+                       options = list(lengthMenu = c(5, 10, 15),
+                                      pageLength = 5, scrollX = TRUE,  dom = 't'),
+                       callback = JS("
+            var tips = [             'Predicted class label using the model chosen',
+                                     'Likelihood Ratio - currently only available for binary classification'
+                                         ],
+                                     header = table.columns().header();
+                                     for (var i = 0; i < 2; i++) {
+                                     $(header[i]).attr('title', tips[i]);
+                                     }
+                                     "))
     } )
     
     
@@ -630,40 +667,47 @@ server <- function( input, output, session) {
                        options = list(lengthMenu = c(5, 10, 20),
                                       pageLength = 5 ))
     } )
-    
-    
-    # Results - show specific output for each method ! 
-    # currently displays a summary of each model
-    
-    output$ClassOutput <- renderPrint ({
-        switch(input$GoClassify,
-               "LDA" =  { print( ClassRes$model)  },
-               "QDA" =  { print( ClassRes$model)  },
-               "Logistic regression" = { print( summary( ClassRes$model) ) },
-               "Firth logistic regression" = { print( summary( ClassRes$model) )  },
-               "Multinomial logistic regression" =  { print( summary( ClassRes$model) )
-                                                      print(  " p-values ")
-                                                      print( ClassRes$model$pval )  } #,
-               # "kNN" = {print("TBC") },
-               # "SVM" = {print("TBC") },
-               # "Random forest" = { print("TBC") },
-               # "Decision trees" = {print("TBC") },
-               # "Naive Bayes classifier" = {print("TBC") },
-               # "Neural networks" = {print("TBC") }
-        )
-        
+
+
+
+
+    # Make specific tabs active when clicking predict and analysis/go buttons
+    observeEvent( input$GoClassify, {
+        updateTabsetPanel(session, "AnalysisSummaries",
+                          selected = "tAnalysis")
     })
     
     # MAke prediction tab active when clicking predict
     observeEvent(input$GoPredUpload, {
         updateTabsetPanel(session, "AnalysisSummaries",
-                          selected = "pPred")
-        
+                          selected = "tPred")
     })
-    
-    # Classification measures and confusion matrix (buggy for uploaded dataset)
-    output$ConfMat <- renderDataTable( {
 
+    observeEvent( input$checkNum | input$checkCat, {
+        if( input$checkNum !=0 | input$checkCat !=0)
+            updateTabsetPanel(session, "DatasetSummaries",
+                              selected = "DataSum")
+    })
+
+    observeEvent( input$GoData, {
+        updateTabsetPanel(session, "DatasetSummaries",
+                              selected = "DataTable")
+    })
+
+    observeEvent( input$GoEvidence, {
+        updateTabsetPanel(session, "EvidenceResults",
+                          selected = "tEviRes")
+    })
+
+    observeEvent( input$GoEvidPredUpload, {
+        updateTabsetPanel(session, "EvidenceResults",
+                          selected = "tEviPred")
+    })
+
+
+    # Classification measures and confusion matrix (buggy for uploaded dataset)
+    output$ConfMat   <- renderDataTable( {
+        
         cm <- confusionMatrix(  reference = ClassRes$testing_dataset[ , input$varXm] , data = as.factor( ClassRes$testing_result$class ) )
         mtable <- NULL
         for ( i in 1 :  length( levels(ClassRes$testing_dataset[ , input$varXm] )))
@@ -724,18 +768,43 @@ server <- function( input, output, session) {
     
     
     # Prediction data plot
-    output$PredPlot <- renderPlot (
-        {  
-            predSet <- cbind ( datasetPred(), ClassRes$prediction$class ) 
+    output$ClassPlot <- renderPlot (
+        {   
+            # training dataset points
+            set1 <- ClassRes$training_dataset
+            
+            # testing dataset points with the model predicted class
+            set2 <- ClassRes$testing_dataset 
+            set2[, input$varXm] <- ClassRes$testing_result$class
+            
+            # Misclassfied observations
+            set3 <- subset( ClassRes$testing_dataset, ClassRes$testing_dataset [, input$varXm ]!= ClassRes$testing_result$class)
+      
+            if ( nrow(set3) != 0 )
+                ggplot( data = set1, aes ( x = !!input$varXp , y = !!input$varYp) ) +
+                geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varC, shape = '20')) +
+                geom_point( data = set2, aes( x = !!input$varXp , y =  !!input$varYp, colour = !!input$varC, shape = '8'), size = 4) +
+                geom_point( data = set3, aes( x = !!input$varXp , y =  !!input$varYp , colour =!!input$varC, shape ='diamond open'), size = 3) +
+                scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'testing', 'misclassified'), values = c('circle', 'asterisk', 'diamond open')) 
+            else
+                ggplot( data = set1, aes ( x = !!input$varXp , y = !!input$varYp) ) +
+                geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varC, shape = '20')) +
+                geom_point( data = set2, aes( x = !!input$varXp , y =  !!input$varYp, colour = !!input$varC, shape = '8'), size = 4) +
+                scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'testing'), values = c('circle', 'asterisk')) 
+    } )
+    
+    # Prediction data plot
+    output$PredPlot <- renderPlot(
+        {
+            predSet <- cbind ( datasetPred(), ClassRes$prediction$class )
             colnames( predSet) [ length( colnames( predSet ))] <- input$varXm
             ggplot( data = ClassRes$training_dataset, aes ( x = !!input$varXp , y = !!input$varYp) ) + 
                 geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varC, shape = '20')) +
-                geom_point( data = predSet, aes( x = !!input$varXp , y =  !!input$varYp, colour = !!input$varC, shape = '8'), size = 4) + 
-                scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'predicted'), values = c(20, 8)) #+
-            #   geom_text ( data = predSet, aes( label =!!input$varC), check_overlap = TRUE, angle = 45, size = 3)
-        
-        } ) 
-    
+                geom_point( data = predSet, aes( x = !!input$varXp , y =  !!input$varYp, colour = !!input$varC, shape = '8'), size = 4) +
+                scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'predicted'), values = c(20, 8)) 
+
+        } )
+
     ###### Evidence tab
     
     # Initialize the object that contains the model outputs and inputs

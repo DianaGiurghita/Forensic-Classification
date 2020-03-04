@@ -49,7 +49,13 @@ RunLDA <- function ( varX, varY, dataset  )
 EvaluateLDA <- function ( model, testing_dataset )
 {
     Predict_result <- predict(model, testing_dataset)
-    return( list( class = Predict_result$class, LR = NA) )
+    
+    # If the model has binary outcome, produce an LR p/(1-p)
+    LR <- NA
+    if ( length( model$lev ) == 2)
+        LR <- Predict_result$posterior[,1] / ( 1 - Predict_result$posterior[,1] )
+    
+    return( list( class = Predict_result$class, LR = LR) )
 }
 
 
@@ -70,7 +76,13 @@ EvaluateQDA <- function ( model, testing_dataset )
 {
     Predict_result <- predict(model, testing_dataset)
     
-    return( list( class = Predict_result$class, LR = NA) )
+    # If the model has binary outcome, produce an LR p/(1-p)
+    LR <- NA
+    if ( length( model$lev ) == 2)
+        LR <- Predict_result$posterior[,1] / ( 1 - Predict_result$posterior[,1] )
+    
+    
+    return( list( class = Predict_result$class, LR = LR) )
 }
 
 # Logistic regression classifier
@@ -170,7 +182,7 @@ EvaluateMLR <- function ( model, testing_dataset )
     class <- lab [ pmax]
      
     # predicted LR 
-    #  LR <-  p/ (1-p) 
+    # LR <-  p/ (1-p) 
     
     return( list( class =  class, LR = NA ) )
 }
