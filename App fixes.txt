@@ -1,10 +1,16 @@
 Immediate fixes (for paper deadline):
+- to add an help message to easly install ggthemr (i.e. by using  devtools::install_github('cttobin/ggthemr')) 
+- several errors in "Classification Performance" (only with Alcohol.txt)
+- errors in "plots" if I use diamonds 
+- errors in "Classification Performance" (Performance measures by class) if I use diabetes 
 - [FIXED] classification summary not working as intended
 - [ADDED] classification plot that shows training data, testing data and misclassified observations
 - [ADDED] LR calculations for predicted data in the classification tab [for binary data only]
-
+- [FIXED] It isn't possible to delete and/or change a predictor once it has been choosen - select and use delete button
 
 
 Additional fixes/features for later:
 - additional methods for classification: knn, naive Bayes, random forests, neural networks etc.
 - use plotly for interactive graphics 
+
+
