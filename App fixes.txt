@@ -2,6 +2,7 @@ Immediate fixes (for paper deadline):
 - G: add a help message to easly install ggthemr (i.e. by using  devtools::install_github('cttobin/ggthemr')) 
 - G: errors in "plots" if I use diamonds 
 - T: make a list of package versions for which the app works as intended and enforce that before app run
+	- T: numerical data summaries not working for Tereza
 - T: tables: rounding numbers in tables (up to 3 digits or whatever is relevant)
 - T: add other relevant logos from Eugenio
 - T: cv options: training percentages should be realistic (over 100% should not be accepted)
