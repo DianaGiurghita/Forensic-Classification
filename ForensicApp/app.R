@@ -696,11 +696,12 @@ server <- function( input, output, session) {
 
     # Classification measures and confusion matrix (buggy for uploaded dataset)
     output$ConfMat   <- renderDataTable( {
-        
+        # check requirements 
         req(input$varXm, ClassRes$testing_dataset )
-        cm <- confusionMatrix(  reference = ClassRes$testing_dataset[ , input$varXm] , data = as.factor( ClassRes$testing_result$class ) )
+        
+        cm <- confusionMatrix(  reference = as.factor(ClassRes$testing_dataset[ , input$varXm]) , data = as.factor( ClassRes$testing_result$class ) )
         mtable <- NULL
-        for ( i in 1 :  length( levels(ClassRes$testing_dataset[ , input$varXm] )))
+        for ( i in 1 :  length( levels( as.factor(ClassRes$testing_dataset[ , input$varXm]) )))
             mtable <- rbind( mtable, cm$table[,i] )
         rownames(mtable) <- colnames(cm$table)
         DT::datatable( mtable, options = list(ordering=F, dom = 't' ) )
@@ -709,7 +710,7 @@ server <- function( input, output, session) {
 
     output$OverKappa <- renderDataTable( {
     req(input$varXm, ClassRes$testing_dataset )
-    cm <- confusionMatrix(  reference = ClassRes$testing_dataset[ , input$varXm] , data = as.factor( ClassRes$testing_result$class ) )
+    cm <- confusionMatrix(  reference = as.factor(ClassRes$testing_dataset[ , input$varXm]), data = as.factor( ClassRes$testing_result$class ) )
     DT::datatable( t(round( cm$overall,3)), rownames = T,
                    options = list(ordering=F, dom = 't'),
                    callback = JS(" var tips = ['Row Names',
@@ -722,9 +723,18 @@ server <- function( input, output, session) {
 })
 
     output$ByClass <- renderDataTable( {
-    req(input$varXm, ClassRes$testing_dataset )
-    cm <- confusionMatrix(  reference = ClassRes$testing_dataset[ , input$varXm] , data = as.factor( ClassRes$testing_result$class ) )
-    DT::datatable( round( cm$byClass,3), rownames = T, options = list(ordering=F, dom = 't'),
+
+    req(  input$varXm,  ClassRes$testing_dataset,  ClassRes$testing_result$class )
+     cm <- confusionMatrix(  reference = as.factor( ClassRes$testing_dataset[ , input$varXm] ), data = as.factor( ClassRes$testing_result$class ) )
+    cmc <- round ( cm$byClass, 3)
+    
+    # for binary data the output needs to be converted to a matrix from a vector
+    if ( class (cmc) == "numeric")
+        cmc <- matrix( cmc, ncol = 11, dimnames = list( " ", names(cmc) ))
+    
+    print( class(cmc) )
+    
+    DT::datatable( cmc , rownames = T, options = list(ordering=F, dom = 't'),
                    callback = JS("
             var tips = ['',
                         'Sensitivity (true positive rate or recall): is the fraction of relevant instances that have been retrieved over the total amount of relevant instances. A/(A+C)',
@@ -836,7 +846,6 @@ server <- function( input, output, session) {
         # #for each method, produce and store performance measure
         for ( j in 1 : length( input$EviMethod) ) {
             for( k in 1 : length( input$EviOptions) ) {
-                #print( c(i,j,k) )
                 p <- try (EvRun( EviRes$training_dataset, EviRes$validation_dataset, EviRes$testing_dataset, input$varXe, input$varYe, input$EviMethod[j], input$EviOptions[k]) )
                 if ( class(p) == "data.frame" )
                     EviRes$predm  <- rbind( EviRes$predm, p)
@@ -849,7 +858,6 @@ server <- function( input, output, session) {
     output$evidence_results <- renderDataTable( {
         req( dim(EviRes$predm)[1] >0, isolate( input$GoEvidence) )
         cm <- EviRes$predm
-        print(cm)
         DT::datatable ( cbind( round( cm[,1:7], 3), cm[, 8:9] ),
                         rownames= FALSE,
                         options = list(lengthMenu = c(5, 10, 20),
