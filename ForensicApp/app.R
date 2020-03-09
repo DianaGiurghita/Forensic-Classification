@@ -102,7 +102,7 @@ ui <- navbarPage( theme = shinytheme("flatly"),
              # ),
              sidebarLayout(
                 sidebarPanel(width = 3,
-             
+                    conditionalPanel( condition = "input.DatasetSummaries==1",  
                         h5(strong("Data set selection")),
               
                         selectInput("dataset", label = NULL, 
@@ -114,12 +114,12 @@ ui <- navbarPage( theme = shinytheme("flatly"),
    
                         actionButton("GoData", label = "Select dataset",icon("file-import"), width = '100%',
                                      style="color: #fff; background-color: #28bb9b; border-color: #87d5c5" ), 
-                        
-                        hr(style="border-color: black;"),
-                        
+                
                         bsTooltip("dataset", "Select an exisiting data set or upload your own", 
                                   placement = "top", trigger = "hover",
-                                    options = NULL),
+                                    options = NULL) ),
+                    
+                    conditionalPanel( condition = "input.DatasetSummaries==2", 
                         
                         h5(strong("Data summaries")),
                         
@@ -127,33 +127,34 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                         
                         checkboxInput( "checkCat", label = "Frequency summaries", value = FALSE),
                         
-                        uiOutput("CatVariableSum"),
-                        
-                        hr(style="border-color: black;"), 
-                        
+                        uiOutput("CatVariableSum") ),
+                    
+                    conditionalPanel( condition = "input.DatasetSummaries==3", 
                         h5(strong("Exploratory plots options")),
                         
                         uiOutput( "Variable_select" ) %>% withSpinner(color="#0dc5c1") 
                         
-                        ),
+                        )),
                 
                 mainPanel(
                     
                      tabsetPanel(
                          id = 'DatasetSummaries',
                          
-                         tabPanel(h5( strong("Data table") ), 
+                         tabPanel( value = 1, 
+                                  h5( strong("Data table") ), 
                                   tags$br(),
                                   DT::dataTableOutput("DataTab") %>% withSpinner(color="#0dc5c1")
                                   ),
                          
                   
-                         tabPanel(h5( strong("Data summaries") ),
+                         tabPanel( value = 2, 
+                                  h5( strong("Data summaries") ),
                                   tags$br(),
                                      
                                   h5( "Numerical variables summary"),
                                   tags$br(),
-                                  DT::dataTableOutput("DataSumN") %>% withSpinner(color="#0dc5c1"),
+                                  DT::dataTableOutput("DataSumN"), # %>% withSpinner(color="#0dc5c1"),
                                   
                                   tags$br(),         
                                   
@@ -163,9 +164,10 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                                   uiOutput("Freq") )#  %>% withSpinner(color="#0dc5c1"))
                                   ),
                                             
-                          tabPanel( h5( strong("Exploratory plots")), 
-                                plotOutput("ExPlot") %>% withSpinner(color="#0dc5c1") 
-                                            )     
+                          tabPanel( value = 3, 
+                                    h5( strong("Exploratory plots")), 
+                                    plotOutput("ExPlot") %>% withSpinner(color="#0dc5c1") 
+                                 )     
                                 
                         )
                     )
@@ -174,14 +176,15 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                   
                     
             
-    # ###############################################################
-    # # Classification tab
+    ################################################################
+    ## Classification tab
     tabPanel(title = "Classification",
              icon = icon( "bar-chart-o"),
 
              sidebarLayout(
                  sidebarPanel(width = 3,
-                              
+                    conditionalPanel( condition = "input.Classification == 'Res' ||  input.Classification =='TestTrain'  ||
+                                      input.Classification == 'ClassPerf' ||  input.Classification == 'ROut' ",      
                         selectInput("method", label = h5( strong("Classification method")),
                                                     choices = c( "LDA","QDA", "Logistic regression", "Firth logistic regression", "Multinomial logistic regression" #, 
                                                                  #"kNN", "SVM", "Random forest", "Decision trees", "Naive Bayes classifier", "Neural networks"
@@ -202,59 +205,62 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                         bsTooltip("RandSeed", "To ensure the reproducibility of your results (should you wish to come back to your analysis at a later point), just use the same number for the random seed every time!", placement = "bottom", trigger = "hover",
                                                 options = NULL),
                         actionButton("GoClassify", label = "Run model", icon("play"), width = '100%',
-                                     style="color: #fff; background-color: #28bb9b; border-color: #87d5c5" ),
-                        
-                        hr(style="border-color: black;"),
-                        
+                                     style="color: #fff; background-color: #28bb9b; border-color: #87d5c5" )
+                        ),
+                    
+                    conditionalPanel( condition = "input.Classification=='ClassPlots'", 
+                                      h5( strong("Classification plot options")),
+                                      uiOutput("VariableSelectClassPlot")
+                        ),
+                    
+                    conditionalPanel( condition = "input.Classification=='pPred'",     
                         h5( strong("Predictions")),
                         fileInput("PredData", "Upload file containing new data", 
                                   accept = c( "text/csv",  "text/comma-separated-values,text/plain", ".csv")  ),
                         actionButton("GoPredUpload", "Predict", icon("file-import"), width = '100%',
                                      style="color: #fff; background-color: #28bb9b; border-color: #87d5c5" ),
                         h5( strong("Prediction plot")),
-                        uiOutput("VariableSelectPlot"),
-                        hr(style="border-color: black;")
-                        
+                        uiOutput("VariableSelectPlot")
+                        )
                         ),
                             
             mainPanel(
-                    tabsetPanel(
-                         id = 'AnalysisSummaries',
-        
-                    tabPanel(h5(strong("Analysis results")),
+                    tabsetPanel( id = 'Classification',
+
+                    tabPanel(value = "ClassPerf",
+                              h5(strong("Classification performance")),
+                              verticalLayout(  
+                                              column( 3, DT::dataTableOutput("ConfMat" )%>% withSpinner(color="#0dc5c1") ),
+                                              tags$br(),
+                                              column( 9, DT::dataTableOutput("OverKappa", width = 800 )%>% withSpinner(color="#0dc5c1") )),
+                             tags$br(),
+                             verticalLayout( column( 9, DT::dataTableOutput("ByClass", width = 800 ) %>% withSpinner(color="#0dc5c1") )
+                             )),
+                    
+                    tabPanel( value = "Res",
+                             h5(strong("Analysis results")),
                              verbatimTextOutput("ClassOutput")
                             ),
-                    tabPanel(h5(strong("Training/testing dataset")),
+                    
+                    tabPanel( value = "TestTrain",
+                             h5(strong("Training/testing dataset")),
                              h4("Training dataset"),
                              DT::dataTableOutput("training_set")%>% withSpinner(color="#0dc5c1"),
                              h4("Testing dataset"),
                              DT::dataTableOutput("testing_set")%>% withSpinner(color="#0dc5c1")
                              #"Maybe some plots showing the percentages of data allocated to train/test"
                             ),
-                    
-                                 
-                                 
                         
-                    tabPanel(h5(strong("Plots")),
+                    tabPanel( value = "ClassPlots",
+                             h5(strong("Plots")),
                                   splitLayout(
                                       plotOutput("ClassPlot") %>% withSpinner(color="#0dc5c1")
-                                      
                                      # uiOutput( "ClassPlot")
                                     )
                                   ),
         
-                    tabPanel(h5(strong("Classification performance")),
-                                  h4("Overall performance measures"),
-                                  verticalLayout( column( 3, h5("Misclassification matrix")) ,
-                                                  column( 3, DT::dataTableOutput("ConfMat")%>% withSpinner(color="#0dc5c1") ),
-                                                  column( 9, h5("Overall statistics")),
-                                                  column( 9, DT::dataTableOutput("OverKappa")%>% withSpinner(color="#0dc5c1") )),
-                                  br(),               
-                                  h4("Performance measures by class") ,
-                                  verticalLayout( column( 9, DT::dataTableOutput("ByClass") %>% withSpinner(color="#0dc5c1") )
-                                  )),
-        
-                    tabPanel(h5(strong("Predictions")), value = "pPred", 
+                    tabPanel( value = "pPred", 
+                             h5(strong("Predictions")), 
                                   fluidRow(
                                             h5(strong("Model predictions")), 
                                             DT::dataTableOutput("PredDataTab") %>% withSpinner(color="#0dc5c1"),
@@ -267,11 +273,13 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                                             )
                             ),
 
-                    tabPanel(h5(strong("R output")),
+                    tabPanel( value = "ROut",
+                             h5(strong("R output")),
                                   
                                   verbatimTextOutput("AnalysisRes")
-                                 ))
-                        )
+                            )
+                    )
+            )
     )
     ),
 
@@ -282,6 +290,7 @@ ui <- navbarPage( theme = shinytheme("flatly"),
               
               sidebarLayout(
                   sidebarPanel(width = 3,
+                        conditionalPanel( condition =  "input.EvidenceResults == 'ePlots' ||  input.EvidenceResults == 'eTable'",         
                                 selectInput("EviMethod", label = h5( strong("Method")),
                                            choices = c( "Firth GLM" = "firth", "Bayes GLM" = "bayes", "GLM Net" = "net"), multiple = T),
                                 uiOutput("varsYevidence"),
@@ -298,34 +307,31 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                                                           textInput("pTest", "Enter the % of data for testing", "20"),
                                                           textInput("RepeatN", "Enter the number of repeated iterations", "5")  
                                                           )),
-                               
                                 actionButton("GoEvidence", label = "Run evidence model", icon("play"), width = '100%',
-                                            style="color: #fff; background-color: #28bb9b; border-color: #87d5c5" ),
-                               
-                                hr(style="border-color: black;"),
-                               
+                                             style="color: #fff; background-color: #28bb9b; border-color: #87d5c5" )
+                                ),
+                        
+                        conditionalPanel( condition =  "input.EvidenceResults == 'ePred' ", 
                                 h5( strong("Predictions")),
                                 fileInput("EvidPredData", "Upload file containing new data", 
                                          accept = c( "text/csv",  "text/comma-separated-values,text/plain", ".csv")  ),
                                 actionButton("GoEvidPredUpload", "Upload", icon("file-import"), width = '100%',
-                                            style="color: #fff; background-color: #28bb9b; border-color: #87d5c5" ),
-                               
-                                hr(style="border-color: black;")
-                               
-                                ),
+                                            style="color: #fff; background-color: #28bb9b; border-color: #87d5c5" )
+                                )
+                  ),
                   
                   mainPanel(
                       tabsetPanel(
                           id = 'EvidenceResults',
                           
-                          tabPanel(h5(strong("Analysis results")),
+                          tabPanel(value = "eTable",
+                                   h5(strong("Analysis results")),
                                    tags$br(),
                                    "Table of performance measures using selected methods",
-                                   DT::dataTableOutput("evidence_results") %>% withSpinner(color="#0dc5c1"),
-                                   tags$br(),
-                                   "Evidence prediction for new observations - coming soon"
+                                   DT::dataTableOutput("evidence_results") %>% withSpinner(color="#0dc5c1")
                                     ),
-                          tabPanel(h5(strong("Plots")),
+                          tabPanel(value = "ePlots",
+                                   h5(strong("Plots")),
                                    fluidRow( column(6, plotOutput("EviPlots1")  %>% withSpinner(color="#0dc5c1")),
                                              column(6, plotOutput("EviPlots2")  %>% withSpinner(color="#0dc5c1"))),
                                    fluidRow( column(6, plotOutput("EviPlots3")  %>% withSpinner(color="#0dc5c1")),
@@ -334,7 +340,8 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                                              column(6, plotOutput("EviPlots6")  %>% withSpinner(color="#0dc5c1"))),
                                    fluidRow( column(6, plotOutput("EviPlots7")  %>% withSpinner(color="#0dc5c1")))
                           ),
-                          tabPanel(h5(strong("Prediction")), value = "tEviPred",
+                          tabPanel(value = "ePred",
+                                   h5(strong("Prediction")),  
                                    "Evidence prediction for new observations - coming soon"
                           )
 
@@ -505,7 +512,8 @@ server <- function( input, output, session) {
     ## In each position of the list output$id, generate the id name and table containing summary statistics 
     ## for the categorical variables selected in the "CatVar" box
     # !
-    observeEvent(input$CatVar,
+    observeEvent(input$CatVar, {
+                 req( input$CatVar)
                  for (i in 1: length( input$CatVar )  ) {
                      id <- paste0( "Freq", i)
                      f <- freq( CatData() [ , input$CatVar[i] ], report.nas = F, headings = F,
@@ -515,7 +523,8 @@ server <- function( input, output, session) {
                      colnames(f) <- c("Frequency", "%", "Cumulative %")
                      output[[id]] <- DT::renderDataTable( f, caption = input$CatVar[i], options = list( dom = 't') )
                     }
-                 )
+                }
+    )
     
     ############## Analysis tab
     
@@ -656,7 +665,7 @@ server <- function( input, output, session) {
         out <- tryCatch( 
                 DT::datatable (dataset, rownames = F,
                        options = list(lengthMenu = c(5, 10, 15),
-                                      pageLength = 5, scrollX = TRUE,  dom = 't'),
+                                      pageLength = 5, scrollX = TRUE),
                        callback = JS("var tips = [             
                                                 'Predicted class label using the model chosen',
                                                 'Likelihood Ratio - currently only available for binary classification'
@@ -684,16 +693,7 @@ server <- function( input, output, session) {
                                       pageLength = 5 ))
     } )
 
-
-
-    # Make specific tabs active when clicking predict and analysis/go buttons
-    observeEvent( input$GoClassify, {
-        updateTabsetPanel(session, "AnalysisSummaries",
-                          selected = "tAnalysis")
-    })
     
-
-
     # Classification measures and confusion matrix (buggy for uploaded dataset)
     output$ConfMat   <- renderDataTable( {
         # check requirements 
@@ -704,7 +704,8 @@ server <- function( input, output, session) {
         for ( i in 1 :  length( levels( as.factor(ClassRes$testing_dataset[ , input$varXm]) )))
             mtable <- rbind( mtable, cm$table[,i] )
         rownames(mtable) <- colnames(cm$table)
-        DT::datatable( mtable, options = list(ordering=F, dom = 't' ) )
+        DT::datatable( mtable, options = list(ordering=F, dom = 't'),
+                       caption = "Confusion matrix")
 
 })
 
@@ -712,16 +713,23 @@ server <- function( input, output, session) {
     req(input$varXm, ClassRes$testing_dataset )
     cm <- confusionMatrix(  reference = as.factor(ClassRes$testing_dataset[ , input$varXm]), data = as.factor( ClassRes$testing_result$class ) )
     DT::datatable( t(round( cm$overall,3)), rownames = T,
-                   options = list(ordering=F, dom = 't'),
+                   options = list(ordering=F, dom = 't', scrollX = TRUE,
+                                  initComplete = JS(
+                                      "function(settings, json) {",
+                                      "$(this.api().table().header()).css({'background-color': '#556271', 'color': '#fff'});",
+                                      "}")      ),
+                   caption = "Overall accuracy and Kappa statistic",
                    callback = JS(" var tips = ['Row Names',
                                                 ' ', ' '],
                                  header = table.columns().header();
                                  for (var i = 0; i < tips.length; i++) {
                                  $(header[i]).attr('title', tips[i]);
                                  }
-                                 ")  )
+                                 "))
 })
 
+   
+    
     output$ByClass <- renderDataTable( {
 
     req(  input$varXm,  ClassRes$testing_dataset,  ClassRes$testing_result$class )
@@ -731,10 +739,14 @@ server <- function( input, output, session) {
     # for binary data the output needs to be converted to a matrix from a vector
     if ( class (cmc) == "numeric")
         cmc <- matrix( cmc, ncol = 11, dimnames = list( " ", names(cmc) ))
-    
-    print( class(cmc) )
-    
-    DT::datatable( cmc , rownames = T, options = list(ordering=F, dom = 't'),
+
+    DT::datatable( cmc , rownames = T, 
+                   caption = "Classification statistics by class",
+                   options = list( ordering=F, scrollX = TRUE,  dom = 't',
+                                   initComplete = JS(
+                                       "function(settings, json) {",
+                                       "$(this.api().table().header()).css({'background-color': '#556271', 'color': '#fff'});",
+                                       "}")),
                    callback = JS("
             var tips = ['',
                         'Sensitivity (true positive rate or recall): is the fraction of relevant instances that have been retrieved over the total amount of relevant instances. A/(A+C)',
@@ -756,6 +768,16 @@ server <- function( input, output, session) {
                                  "))
  })
     
+    # Generate plots for classification data according to selected variables
+    
+    output$VariableSelectClassPlot <- renderUI( { 
+        verticalLayout(
+            varSelectInput("varXc", h5("Choose variable for x axis"),  datasetInput()  ),
+            varSelectInput("varYc", h5("Choose variable for y axis"),  datasetInput()  ),
+            varSelectInput("varCc",  h5("Choose variable for point colour"), CatData()  )
+        )
+    } )
+    
     # Generate plots for predicted data according to selected variables
     
     output$VariableSelectPlot <- renderUI( { 
@@ -769,28 +791,37 @@ server <- function( input, output, session) {
     
     # Classification data plot
     output$ClassPlot <- renderPlot (
-        {   req( input$varXm, input$varXp, input$varYp, input$varC,  ClassRes$training_dataset,  ClassRes$testing_dataset, ClassRes$testing_result$class  )
+        {   req( input$varXm, input$varXc, input$varYc, input$varCc,  ClassRes$training_dataset,  ClassRes$testing_dataset, ClassRes$testing_result$class  )
             
             # training dataset points
             set1 <- ClassRes$training_dataset
-            
+          
             # testing dataset points with the model predicted class
             set2 <- ClassRes$testing_dataset 
+      
             set2[, input$varXm] <- ClassRes$testing_result$class
+            
+            # Class label migth be a problem
+            # print (class(ClassRes$testing_dataset))
+            # print (class(ClassRes$testing_dataset [, input$varXm ]))
+            # print (class(ClassRes$testing_result$class))
+            
+            ClassRes$testing_result$class
             
             # Misclassfied observations
             set3 <- subset( ClassRes$testing_dataset, ClassRes$testing_dataset [, input$varXm ]!= ClassRes$testing_result$class)
-      
+             
+            
             if ( nrow(set3) != 0 )
-                ggplot( data = set1, aes ( x = !!input$varXp , y = !!input$varYp) ) +
-                geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varC, shape = '20')) +
-                geom_point( data = set2, aes( x = !!input$varXp , y =  !!input$varYp, colour = !!input$varC, shape = '8'), size = 4) +
-                geom_point( data = set3, aes( x = !!input$varXp , y =  !!input$varYp , colour =!!input$varC, shape ='diamond open'), size = 3) +
+                ggplot( data = set1, aes ( x = !!input$varXc , y = !!input$varYc) ) +
+                geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varCc, shape = '20')) +
+                geom_point( data = set2, aes( x = !!input$varXc  , y =  !!input$varYc, colour = !!input$varCc, shape = '8'), size = 4) +
+                geom_point( data = set3, aes( x = !!input$varXc , y =  !!input$varYc , colour =!!input$varCc, shape ='diamond open'), size = 3) +
                 scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'testing', 'misclassified'), values = c('circle', 'asterisk', 'diamond open')) 
             else
-                ggplot( data = set1, aes ( x = !!input$varXp , y = !!input$varYp) ) +
-                geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varC, shape = '20')) +
-                geom_point( data = set2, aes( x = !!input$varXp , y =  !!input$varYp, colour = !!input$varC, shape = '8'), size = 4) +
+                ggplot( data = set1, aes ( x = !!input$varXc , y = !!input$varYc) ) +
+                geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varCc, shape = '20')) +
+                geom_point( data = set2, aes( x = !!input$varXc , y =  !!input$varYc, colour = !!input$varCc, shape = '8'), size = 4) +
                 scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'testing'), values = c('circle', 'asterisk')) 
     } )
     

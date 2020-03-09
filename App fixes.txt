@@ -7,6 +7,7 @@ Immediate fixes (for paper deadline):
 - T: add other relevant logos from Eugenio
 - T: cv options: training percentages should be realistic (over 100% should not be accepted)
 - T: add relevant error messages for the user when things go wrong
+- [FIXED] T: tables too long - added horizontal scrolling for tables that are too long
 - [FIXED] G: several errors in "Classification Performance" (only with Alcohol.txt)
 - [FIXED] G: errors in "Classification Performance" (Performance measures by class) if I use diabetes 
 - [FIXED] classification summary not working as intended
@@ -18,6 +19,6 @@ Immediate fixes (for paper deadline):
 Additional fixes/features for later:
 - additional methods for classification: knn, naive Bayes, random forests, neural networks etc.
 - use plotly for interactive graphics 
-- T: redesign menu so that each tab has the relevant options to that tab only (prevent long pages due to many options in leftside menu)
+- [FIXED] T: redesign menu so that each tab has the relevant options to that tab only (prevent long pages due to many options in leftside menu)
 
 
