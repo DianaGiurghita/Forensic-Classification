@@ -1,24 +1,27 @@
 Immediate fixes (for paper deadline):
 - G: add a help message to easly install ggthemr (i.e. by using  devtools::install_github('cttobin/ggthemr')) 
-- G: errors in "plots" if I use diamonds 
 - T: make a list of package versions for which the app works as intended and enforce that before app run
-	- T: numerical data summaries not working for Tereza
-- T: tables: rounding numbers in tables (up to 3 digits or whatever is relevant)
+- T: numerical data summaries not working for Tereza
+- D: glmnet estimation problems	
+- D: add prediction for new data in the LR tab
 - T: add other relevant logos from Eugenio
-- T: cv options: training percentages should be realistic (over 100% should not be accepted)
-- T: add relevant error messages for the user when things go wrong
+- [FIXED] T: cv options: training percentages should be realistic (over 100% or negative should not be accepted)
+- [FIXED] T: tables: rounding numbers in tables (up to 3 digits or whatever is relevant)
+- [ADDED] T: add relevant error messages for the user when things go wrong
+- [FIXED] G: errors in "plots" if I use diamonds 
 - [FIXED] T: tables too long - added horizontal scrolling for tables that are too long
 - [FIXED] G: several errors in "Classification Performance" (only with Alcohol.txt)
 - [FIXED] G: errors in "Classification Performance" (Performance measures by class) if I use diabetes 
 - [FIXED] classification summary not working as intended
 - [ADDED] classification plot that shows training data, testing data and misclassified observations
 - [ADDED] LR calculations for predicted data in the classification tab [for binary data only]
-- [FIXED] G: It isn't possible to delete and/or change a predictor once it has been choosen - select and use delete button
+- [FIXED] G: It isn't possible to delete and/or change a predictor once it has been chosen - select and use delete button
 
 
 Additional fixes/features for later:
 - additional methods for classification: knn, naive Bayes, random forests, neural networks etc.
 - use plotly for interactive graphics 
+- create color palette for plots to allow for large numbers of levels in a categorical variable
 - [FIXED] T: redesign menu so that each tab has the relevant options to that tab only (prevent long pages due to many options in leftside menu)
 
 

@@ -27,16 +27,23 @@ library(plotly)
 # set working directory and source functions_rshiny.R 
 source("functions_rshiny.R")
 st_options("round.digits")
+
+# make datasets used in the app available
 data("Glass")
 data("BreastCancer")
 data("PimaIndiansDiabetes")
 
-#theme_set(theme_bw(base_size = 18))
 # install_formats()   # to install formats for use with rio import() functions
 
-#ggthemr('light', layout = 'clear', spacing = 1)
+# This will add a generic error message for users everytime somethings goes wrong
+# options(shiny.sanitize.errors = TRUE) 
+# To hide all red error messages in the app - uncomment this! Not recommended 
+# tags$style(type="text/css",
+#            ".shiny-output-error { visibility: hidden; }",
+#            ".shiny-output-error:before { visibility: hidden; }"
+# ),
+
 ggthemr('solarized', layout = 'clear', spacing = 1, text_size = 14)
-#ggthemr('pale', layout = 'clear', spacing = 1)
 
 # Define UI for application that draws the app layout and components
 ui <- navbarPage( theme = shinytheme("flatly"),
@@ -94,12 +101,7 @@ ui <- navbarPage( theme = shinytheme("flatly"),
     # Data tab
     tabPanel(title = "Data", 
              icon = icon( "database"),
-
-             # To hide all rd error messages in the app - uncomment this 
-             # tags$style(type="text/css",
-             #            ".shiny-output-error { visibility: hidden; }",
-             #            ".shiny-output-error:before { visibility: hidden; }"
-             # ),
+             
              sidebarLayout(
                 sidebarPanel(width = 3,
                     conditionalPanel( condition = "input.DatasetSummaries==1",  
@@ -154,14 +156,15 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                                      
                                   h5( "Numerical variables summary"),
                                   tags$br(),
-                                  DT::dataTableOutput("DataSumN"), # %>% withSpinner(color="#0dc5c1"),
-                                  
+                                  DT::dataTableOutput("DataSumN"),
                                   tags$br(),         
                                   
                                   h5( "Categorical variables summary"),
                                   tags$br(),
                                   column(8,
-                                  uiOutput("Freq") )#  %>% withSpinner(color="#0dc5c1"))
+                                  uiOutput("Freq") ),
+                                  tags$br()
+                                  
                                   ),
                                             
                           tabPanel( value = 3, 
@@ -183,7 +186,7 @@ ui <- navbarPage( theme = shinytheme("flatly"),
 
              sidebarLayout(
                  sidebarPanel(width = 3,
-                    conditionalPanel( condition = "input.Classification == 'Res' ||  input.Classification =='TestTrain'  ||
+                    conditionalPanel( condition = "input.Classification == 'Res' ||  input.Classification == 'TestTrain'  ||
                                       input.Classification == 'ClassPerf' ||  input.Classification == 'ROut' ",      
                         selectInput("method", label = h5( strong("Classification method")),
                                                     choices = c( "LDA","QDA", "Logistic regression", "Firth logistic regression", "Multinomial logistic regression" #, 
@@ -194,12 +197,10 @@ ui <- navbarPage( theme = shinytheme("flatly"),
 
                         bsCollapse(id = "collapseExample", open = "Panel 2",
                                     bsCollapsePanel("Advanced options",
-                                       # numericInput("CvFold", "Enter the cross validation fold", 1, min = 1 ),
                                         numericInput("DataSplit", "Enter the training percentage split", 80, min = 1),
                                         numericInput("RandSeed", "Enter random seed number", 23, min = 0 )  )
                                    ),
-                       # bsTooltip("CvFold", "This number represents the 'k' in k-fold cross validation", placement = "bottom", trigger = "hover",
-                        #            options = NULL),
+                       
                         bsTooltip("DataSplit", "This number represents the percentage of the data set that is assigned to the training set", placement = "bottom", trigger = "hover",
                                                 options = NULL),
                         bsTooltip("RandSeed", "To ensure the reproducibility of your results (should you wish to come back to your analysis at a later point), just use the same number for the random seed every time!", placement = "bottom", trigger = "hover",
@@ -213,7 +214,7 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                                       uiOutput("VariableSelectClassPlot")
                         ),
                     
-                    conditionalPanel( condition = "input.Classification=='pPred'",     
+                    conditionalPanel( condition = "input.Classification =='pPred'",     
                         h5( strong("Predictions")),
                         fileInput("PredData", "Upload file containing new data", 
                                   accept = c( "text/csv",  "text/comma-separated-values,text/plain", ".csv")  ),
@@ -228,13 +229,15 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                     tabsetPanel( id = 'Classification',
 
                     tabPanel(value = "ClassPerf",
-                              h5(strong("Classification performance")),
-                              verticalLayout(  
+                             h5(strong("Classification performance")),
+                              
+                             
+                             verticalLayout(  
                                               column( 3, DT::dataTableOutput("ConfMat" )%>% withSpinner(color="#0dc5c1") ),
                                               tags$br(),
-                                              column( 9, DT::dataTableOutput("OverKappa", width = 800 )%>% withSpinner(color="#0dc5c1") )),
+                                              column( 12, DT::dataTableOutput("OverKappa")%>% withSpinner(color="#0dc5c1") )),
                              tags$br(),
-                             verticalLayout( column( 9, DT::dataTableOutput("ByClass", width = 800 ) %>% withSpinner(color="#0dc5c1") )
+                             verticalLayout(  column( 12, DT::dataTableOutput("ByClass") %>% withSpinner(color="#0dc5c1") )
                              )),
                     
                     tabPanel( value = "Res",
@@ -261,22 +264,27 @@ ui <- navbarPage( theme = shinytheme("flatly"),
         
                     tabPanel( value = "pPred", 
                              h5(strong("Predictions")), 
-                                  fluidRow(
+                                  fluidRow( column( 6,
                                             h5(strong("Model predictions")), 
                                             DT::dataTableOutput("PredDataTab") %>% withSpinner(color="#0dc5c1"),
                                             tags$style(type="text/css", "#PredDataTab td:nth-child(1) {text-align:center;background-color:#ffd800;color: black;text-align:center}"),
-                                            tags$style(type="text/css", "#PredDataTab td:nth-child(2) {text-align:center;background-color:#ffb000;color: black;text-align:center}"),
-                                            tags$br(),                                            
+                                            tags$style(type="text/css", "#PredDataTab td:nth-child(2) {text-align:center;background-color:#ffb000;color: black;text-align:center}") ),
+                                        #    tags$br(),    
+                                            column( 6,
                                             h5(strong("Plot predictions")),
+                                            tags$br(),
+                                            tags$br() ,
                                             plotOutput("PredPlot") %>% withSpinner(color="#0dc5c1")
+                                           # tags$br() 
+                                           )
                                           #"TBC - user can choose what plot they want to display the predicted data"
                                             )
                             ),
 
                     tabPanel( value = "ROut",
-                             h5(strong("R output")),
-                                  
-                                  verbatimTextOutput("AnalysisRes")
+                              h5(strong("R output")),
+                                    
+                                    verbatimTextOutput("AnalysisRes")
                             )
                     )
             )
@@ -486,7 +494,7 @@ server <- function( input, output, session) {
     ### Generating summary statistics for numerical variables 
     output$DataSumN <- renderDataTable ( { 
         if(input$checkNum == TRUE)
-        DT::datatable (  round(descr( NumData() , stats = c( "min", "q1", "med", "mean" ,"q3", "max", "sd"), 
+        DT::datatable (  round( descr( NumData(), stats = c( "min", "q1", "med", "mean" ,"q3", "max", "sd"), 
                                 transpose = TRUE, headings = FALSE, justify = "c", style = "simple"), 3),
                          options = list(  dom = 't')  
                      )
@@ -494,11 +502,11 @@ server <- function( input, output, session) {
     
 
     ### Generating summary statistics for categorical variables 
-    
     output$CatVariableSum <- renderUI( {
         if(input$checkCat == TRUE)
             selectInput("CatVar", h5("Choose your variables"), multiple = T, names( CatData() )  )
     } )
+    
     
     ## Generating summary statistics for factor variables by first generating a list of dataTables 
     ## based on the number of variables selected
@@ -561,12 +569,29 @@ server <- function( input, output, session) {
                  {ClassRes$seed <- input$RandSeed
                   set.seed( input$RandSeed )
                 })
-       
+    
+    #### Error notifications for classification tab: training percentage choice, random seed choice and choosing predictors
+    observeEvent(input$GoClassify, {
+
+        if ( is.null( input$varYm) ){
+            showNotification(  "Choose at least one predictor from the list!", duration = 2, type = "error")
+        }
+        if ( input$DataSplit >=100 | input$DataSplit <=0 )
+            showNotification(  "Your training dataset should be greater than 0 and less than 100% of your data!", duration = 2, type = "error")
+        
+        if ( input$RandSeed %% 1 != 0 |  input$RandSeed <=0)
+            showNotification(  "The random seed should be a positive integer!", duration = 2, type = "error")
+        
+    })
+    
     
     # Selecting method 
     observeEvent( input$GoClassify,  {
         
-        req(input$varXm, input$varYm, input$method)
+        # Ensure user selects required options
+        req(input$varXm, input$varYm, input$method, input$DataSplit <100, input$DataSplit >0, 
+            input$RandSeed %% 1 == 0, input$RandSeed >0)
+        
         # set seed to whatever the user input
         set.seed(ClassRes$seed )
         
@@ -574,7 +599,6 @@ server <- function( input, output, session) {
         ClassRes$data <- DataTrainTest( data = datasetInput(), per = input$DataSplit)
         ClassRes$training_dataset <- as.data.frame(ClassRes$data[1])
         ClassRes$testing_dataset  <- as.data.frame(ClassRes$data[2])
-
     
         # fit selected model
         switch(input$method,
@@ -604,10 +628,9 @@ server <- function( input, output, session) {
 
     # Results - show specific output for each method !
     # currently displays a summary of each model
-    
     observeEvent( input$GoClassify, {
     output$ClassOutput <- renderPrint ({
-        switch( isolate(input$method),
+        switch( input$method,
                "LDA" =  { print( ClassRes$model)  },
                "QDA" =  { print( ClassRes$model)  },
                "Logistic regression" = { print( summary( ClassRes$model) ) },
@@ -625,6 +648,7 @@ server <- function( input, output, session) {
     }) 
     })
     
+    
     # Render model output for the last tab
     output$AnalysisRes <- renderPrint( {   
          print( paste ("Random seed set to: ", ClassRes$seed))
@@ -635,14 +659,26 @@ server <- function( input, output, session) {
     
     
     # Import data set for prediction
-    
     datasetPred <- eventReactive( input$GoPredUpload, 
         { req( input$PredData$datapath, input$GoPredUpload  )
           datasetPred <- import( input$PredData$datapath )        
     })
     
+    #### Error notifications for classification, prediction tab: 
+    observeEvent(input$GoPredUpload, {
+        if ( FALSE %in% ( names( datasetPred() ) %in%  names( datasetInput() ) )  )
+            showNotification(  "The variables in the uploaded dataset do not match the dataset used for training!", duration = 10, type = "error")
+    })
+    
+    
     # Predict for selected methods
     observeEvent( input$GoPredUpload,  {
+        
+        # requirements 
+        req ( ClassRes$model, 
+              names( datasetPred() ) %in%  names( datasetInput() ),
+              names( ClassRes$training_dataset) %in%  names( datasetInput() ) )
+        
         switch(input$method,
                "LDA" =  {ClassRes$prediction <-  EvaluateLDA( ClassRes$model,  datasetPred() ) },
                "QDA" =  {ClassRes$prediction <-  EvaluateQDA( ClassRes$model,  datasetPred() ) },
@@ -658,9 +694,9 @@ server <- function( input, output, session) {
                )
         } )
     
-    ### Generate dataset table to display the data upladed for prediction
+    ### Generate dataset table to display the data uploaded for prediction
     output$PredDataTab <- renderDataTable( {
-        req( ClassRes$prediction$class )
+        req( ClassRes$prediction$class, names( datasetPred() ) %in%  names( datasetInput() ) )
         dataset <- cbind( Prediction = ClassRes$prediction$class, LR =  round(ClassRes$prediction$LR, 5), datasetPred() )
         out <- tryCatch( 
                 DT::datatable (dataset, rownames = F,
@@ -693,11 +729,10 @@ server <- function( input, output, session) {
                                       pageLength = 5 ))
     } )
 
-    
     # Classification measures and confusion matrix (buggy for uploaded dataset)
     output$ConfMat   <- renderDataTable( {
-        # check requirements 
-        req(input$varXm, ClassRes$testing_dataset )
+       
+        req( ClassRes$testing_dataset, input$varXm %in% names(ClassRes$testing_dataset) )
         
         cm <- confusionMatrix(  reference = as.factor(ClassRes$testing_dataset[ , input$varXm]) , data = as.factor( ClassRes$testing_result$class ) )
         mtable <- NULL
@@ -710,7 +745,9 @@ server <- function( input, output, session) {
 })
 
     output$OverKappa <- renderDataTable( {
-    req(input$varXm, ClassRes$testing_dataset )
+        
+    req(   ClassRes$testing_dataset, input$varXm %in% names(ClassRes$testing_dataset) )
+        
     cm <- confusionMatrix(  reference = as.factor(ClassRes$testing_dataset[ , input$varXm]), data = as.factor( ClassRes$testing_result$class ) )
     DT::datatable( t(round( cm$overall,3)), rownames = T,
                    options = list(ordering=F, dom = 't', scrollX = TRUE,
@@ -728,11 +765,10 @@ server <- function( input, output, session) {
                                  "))
 })
 
-   
+    output$ByClass  <- renderDataTable( {
     
-    output$ByClass <- renderDataTable( {
-
-    req(  input$varXm,  ClassRes$testing_dataset,  ClassRes$testing_result$class )
+    req(   ClassRes$testing_dataset, input$varXm %in% names(ClassRes$testing_dataset) )
+        
      cm <- confusionMatrix(  reference = as.factor( ClassRes$testing_dataset[ , input$varXm] ), data = as.factor( ClassRes$testing_result$class ) )
     cmc <- round ( cm$byClass, 3)
     
@@ -791,26 +827,23 @@ server <- function( input, output, session) {
     
     # Classification data plot
     output$ClassPlot <- renderPlot (
-        {   req( input$varXm, input$varXc, input$varYc, input$varCc,  ClassRes$training_dataset,  ClassRes$testing_dataset, ClassRes$testing_result$class  )
+        {   req( input$varXm, input$varXc, input$varYc, input$varCc,  
+                 ClassRes$training_dataset,  ClassRes$testing_dataset, ClassRes$testing_result$class,
+                 names( datasetInput() ) %in% names( ClassRes$training_dataset) )
             
             # training dataset points
             set1 <- ClassRes$training_dataset
+            set1[, input$varXm ] <- factor( set1[,input$varXm ], ordered = F )
           
             # testing dataset points with the model predicted class
             set2 <- ClassRes$testing_dataset 
       
             set2[, input$varXm] <- ClassRes$testing_result$class
             
-            # Class label migth be a problem
-            # print (class(ClassRes$testing_dataset))
-            # print (class(ClassRes$testing_dataset [, input$varXm ]))
-            # print (class(ClassRes$testing_result$class))
-            
-            ClassRes$testing_result$class
-            
-            # Misclassfied observations
-            set3 <- subset( ClassRes$testing_dataset, ClassRes$testing_dataset [, input$varXm ]!= ClassRes$testing_result$class)
-             
+            # make sure both factors are unordered otherwise subsetting will cause problems if one of the cateogries doens't have all the levels as the other
+            # a factor can only be compared to another factor with an identical set of levels
+            set3 <- subset( ClassRes$testing_dataset, factor( ClassRes$testing_dataset [, input$varXm ], ordered = F) != ClassRes$testing_result$class)
+            set3[, input$varXm ] <- factor( set3[,input$varXm ], ordered = F )
             
             if ( nrow(set3) != 0 )
                 ggplot( data = set1, aes ( x = !!input$varXc , y = !!input$varYc) ) +
@@ -827,14 +860,19 @@ server <- function( input, output, session) {
     
     # Prediction data plot
     output$PredPlot <- renderPlot(
-        { req( input$varXm, input$varXp, input$varYp, input$varC, ClassRes$prediction, ClassRes$testing_result$class  )
+        {  
+           # requirements 
+           req( input$varXm, input$varXp, input$varYp, input$varC,  
+                names( datasetPred() ) %in%  names( datasetInput() ),  
+                ClassRes$prediction)
             
             predSet <- cbind ( datasetPred(), ClassRes$prediction$class )
             colnames( predSet) [ length( colnames( predSet ))] <- input$varXm
             ggplot( data = ClassRes$training_dataset, aes ( x = !!input$varXp , y = !!input$varYp) ) + 
-                geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varC, shape = '20')) +
+                geom_point( alpha = 0.3, size = 2, aes( colour = !!input$varC, shape = '20')) +
                 geom_point( data = predSet, aes( x = !!input$varXp , y =  !!input$varYp, colour = !!input$varC, shape = '8'), size = 4) +
-                scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'predicted'), values = c(20, 8)) 
+                scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'predicted'), values = c(20, 8)) +
+                theme(legend.position="bottom", legend.box = "vertical", legend.text=element_text(size=10))
 
         } )
 
@@ -863,7 +901,10 @@ server <- function( input, output, session) {
     observeEvent( input$GoEvidence, {
         
     # Requirements so app doesn't crash or show errors
-    req( input$varXe, input$varYe, input$EviMethod, input$EviOptions )
+    req( input$varXe,  length( input$varYe ) > 0, input$EviMethod, input$EviOptions, length ( levels( CatData()[, input$varXe] ) ) == 2,
+         as.numeric(input$pTrain) > 0  , as.numeric(input$pValid) > 0  , as.numeric(input$pTest) > 0,
+         as.numeric(input$pTrain) < 100, as.numeric(input$pValid) < 100, as.numeric(input$pTest) < 100,
+         as.numeric(input$RepeatN) > 0, as.numeric(input$RepeatN) %% 1 == 0 )
         
     # Repetitions loop        
     for ( i in 1 :  input$RepeatN ){
@@ -874,7 +915,7 @@ server <- function( input, output, session) {
         EviRes$testing_dataset    <- as.data.frame( EviRes$data[[2]])
         EviRes$validation_dataset <- as.data.frame( EviRes$data[[3]])
         
-        # #for each method, produce and store performance measure
+        # for each method, produce and store performance measure
         for ( j in 1 : length( input$EviMethod) ) {
             for( k in 1 : length( input$EviOptions) ) {
                 p <- try (EvRun( EviRes$training_dataset, EviRes$validation_dataset, EviRes$testing_dataset, input$varXe, input$varYe, input$EviMethod[j], input$EviOptions[k]) )
@@ -885,9 +926,32 @@ server <- function( input, output, session) {
     }
 })
 
-    # Displaying a table of the computed measures for all selected methods and estimation types
+    
+    ### Error notifications for evidence tab: 
+    observeEvent( input$GoEvidence, {
+        if ( length ( levels( CatData()[, input$varXe] ) ) != 2 )
+            showNotification(  "The methods available at the moment can only deal with binary data!", duration = 2, type = "error")
+
+        if ( ! ( length( input$varYe ) > 0 ) )
+            showNotification(  "Choose at least one predictor from the list!", duration = 2, type = "error")
+        
+        if ( is.null( input$EviMethod ) )
+            showNotification(  "Choose at least one estimation method from the list!", duration = 2, type = "error")
+
+        if ( is.null( input$EviOptions ) )
+            showNotification(  "Choose at least one LR estimation method from the list!", duration = 2, type = "error")
+        
+        if ( as.numeric(input$pTrain) < 0 | as.numeric(input$pValid) < 0 | as.numeric(input$pTest) < 0 |
+             as.numeric(input$pTrain) >= 100 | as.numeric(input$pValid) >= 100 | as.numeric(input$pTest) >= 100 )
+            showNotification(  "Percentage allocation of any of the training, validation and testing datasets has to be greater than 0 and less than 100% ", duration = 5, type = "error")
+        
+        if ( as.numeric(input$RepeatN) <= 0 | as.numeric(input$RepeatN) %% 1 != 0  )
+            showNotification(  "The number of repetitions has to be a positive integer!", duration = 2, type = "error")
+    })
+
+        # Displaying a table of the computed measures for all selected methods and estimation types
     output$evidence_results <- renderDataTable( {
-        req( dim(EviRes$predm)[1] >0, isolate( input$GoEvidence) )
+        req( dim(EviRes$predm)[1] > 0, isolate( input$GoEvidence) )
         cm <- EviRes$predm
         DT::datatable ( cbind( round( cm[,1:7], 3), cm[, 8:9] ),
                         rownames= FALSE,
@@ -906,7 +970,7 @@ server <- function( input, output, session) {
                  })  )
     
     observeEvent(input$GoEvidence, {
-        req( EviRes$predm )
+        req( dim(EviRes$predm)[1] >0 )
         output$EviPlots1 <- renderPlot( {
             CM <- EviRes$predm
             ggplot( CM, aes( x =  Method, y = Precision ) ) +
