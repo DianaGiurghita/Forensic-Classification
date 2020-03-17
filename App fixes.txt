@@ -1,10 +1,17 @@
 Immediate fixes (for paper deadline):
 - G: add a help message to easly install ggthemr (i.e. by using  devtools::install_github('cttobin/ggthemr')) 
 - T: make a list of package versions for which the app works as intended and enforce that before app run
-- T: numerical data summaries not working for Tereza
 - D: glmnet estimation problems	
 - D: add prediction for new data in the LR tab
 - T: add other relevant logos from Eugenio
+- T: app crashing when using multivariate lr
+- T: In the Likelihood ratio tab, when I choose all three methods the results only list bayes and net. Surely one of those should be firth?
+- D: diabetes does not work with Firth logistic regression
+- D: make an averages table for the Likelihood ratio comparison
+- T: we should be able to compare methods in the Likelihood ratio tab and the Classification tab: make the training set the same and option to use the same seed?
+- [ADDED] T: allow classification method running with training set to 100% (i.e. the whole data set is used for fitting the model)
+- [FIXED] T: numerical data summaries not working for Tereza
+- [FIXED] T: In the cross-validation options, if I make the training percentage 100% I get a warning, but the model still runs.
 - [FIXED] T: cv options: training percentages should be realistic (over 100% or negative should not be accepted)
 - [FIXED] T: tables: rounding numbers in tables (up to 3 digits or whatever is relevant)
 - [ADDED] T: add relevant error messages for the user when things go wrong
@@ -23,5 +30,8 @@ Additional fixes/features for later:
 - use plotly for interactive graphics 
 - create color palette for plots to allow for large numbers of levels in a categorical variable
 - [FIXED] T: redesign menu so that each tab has the relevant options to that tab only (prevent long pages due to many options in leftside menu)
+- check warnings when using Glass: "Warning in confusionMatrix.default(reference = as.factor(ClassRes$testing_dataset[,  :
+  Levels are not in the same order for reference and data. Refactoring data to match." 
+- check warnings: 
 
 

@@ -193,6 +193,7 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                                                                  #"kNN", "SVM", "Random forest", "Decision trees", "Naive Bayes classifier", "Neural networks"
                                                                  )),
                         uiOutput("VariableSelectX"),
+                     #   uiOutput("VarLab"),
                         uiOutput("VariableSelectY"),
 
                         bsCollapse(id = "collapseExample", open = "Panel 2",
@@ -539,6 +540,7 @@ server <- function( input, output, session) {
     # Initialize the object that contains the model outputs and inputs
     ClassRes <- reactiveValues( )
        ClassRes$model <- NULL
+       ClassRes$method <- NULL
        ClassRes$data <- NULL
        ClassRes$training_dataset <- NULL
        ClassRes$testing_dataset  <- NULL
@@ -573,15 +575,25 @@ server <- function( input, output, session) {
     #### Error notifications for classification tab: training percentage choice, random seed choice and choosing predictors
     observeEvent(input$GoClassify, {
 
-        if ( is.null( input$varYm) ){
+        if ( is.null( input$varYm) )
             showNotification(  "Choose at least one predictor from the list!", duration = 2, type = "error")
-        }
-        if ( input$DataSplit >=100 | input$DataSplit <=0 )
+    
+        if ( input$DataSplit >100 | input$DataSplit <=0 )
             showNotification(  "Your training dataset should be greater than 0 and less than 100% of your data!", duration = 2, type = "error")
+        
+        if ( input$DataSplit ==100  )
+            showNotification(  "Your whole data set is used to train the classifier, which might lead to overfitting!", duration = 5, type = "warning")
         
         if ( input$RandSeed %% 1 != 0 |  input$RandSeed <=0)
             showNotification(  "The random seed should be a positive integer!", duration = 2, type = "error")
         
+        if( input$method == "Multinomial logistic regression"  &  length( levels( CatData()[, input$varXm] )  ) < 3 ) 
+            showNotification(  "Multinomial logistic regression can only be applied to variables with more than 2 classes!", duration = 2, type = "error")
+        
+        if( (input$method == "Logistic regression" | input$method == "Firth logistic regression") &  length( levels( CatData()[, input$varXm] )  ) != 2 ) 
+            showNotification(  "This method can only be applied to data with a binary response variable!", duration = 2, type = "error")
+        
+           
     })
     
     
@@ -589,7 +601,7 @@ server <- function( input, output, session) {
     observeEvent( input$GoClassify,  {
         
         # Ensure user selects required options
-        req(input$varXm, input$varYm, input$method, input$DataSplit <100, input$DataSplit >0, 
+        req(input$varXm, input$varYm, input$method, input$DataSplit <=100, input$DataSplit >0, 
             input$RandSeed %% 1 == 0, input$RandSeed >0)
         
         # set seed to whatever the user input
@@ -603,19 +615,27 @@ server <- function( input, output, session) {
         # fit selected model
         switch(input$method,
                "LDA" =  {ClassRes$model <-  RunLDA( input$varXm, input$varYm, ClassRes$training_dataset  )
-                         ClassRes$testing_result <- EvaluateLDA( ClassRes$model, ClassRes$testing_dataset ) },
+                         ClassRes$testing_result <- EvaluateLDA( ClassRes$model, ClassRes$testing_dataset )
+                         ClassRes$method <- input$method},
 
                "QDA" =  {ClassRes$model <-  RunQDA( input$varXm, input$varYm, ClassRes$training_dataset  )
-                         ClassRes$testing_result <- EvaluateQDA( ClassRes$model, ClassRes$testing_dataset ) },
+                         ClassRes$testing_result <- EvaluateQDA( ClassRes$model, ClassRes$testing_dataset )
+                         ClassRes$method <- input$method},
 
-               "Logistic regression" = {ClassRes$model <-  RunLR( input$varXm, input$varYm, ClassRes$training_dataset  )
-                                        ClassRes$testing_result <- EvaluateLR( ClassRes$model, ClassRes$testing_dataset ) },
+               "Logistic regression" = {req(  length( levels( CatData()[, input$varXm] ) ) == 2 ) 
+                                        ClassRes$model <-  RunLR( input$varXm, input$varYm, ClassRes$training_dataset  )
+                                        ClassRes$testing_result <- EvaluateLR( ClassRes$model, ClassRes$testing_dataset ) 
+                                        ClassRes$method <- input$method },
 
-               "Firth logistic regression" = {ClassRes$model <-  RunLRF( input$varXm, input$varYm, ClassRes$training_dataset )
-                                              ClassRes$testing_result <- EvaluateLRF( ClassRes$model, ClassRes$testing_dataset ) },
+               "Firth logistic regression" = {req(  length( levels( CatData()[, input$varXm] ) ) == 2 )
+                                              ClassRes$model <-  RunLRF( input$varXm, input$varYm, ClassRes$training_dataset )
+                                              ClassRes$testing_result <- EvaluateLRF( ClassRes$model, ClassRes$testing_dataset ) 
+                                              ClassRes$method <- input$method },
 
-               "Multinomial logistic regression" =  {ClassRes$model <-  RunMLR( input$varXm, input$varYm, ClassRes$training_dataset )
-                                                     ClassRes$testing_result <- EvaluateMLR( ClassRes$model, ClassRes$testing_dataset )} #, 
+               "Multinomial logistic regression" =  {req( length( levels( CatData()[, input$varXm] ) ) > 2 )
+                                                     ClassRes$model <-  RunMLR( input$varXm, input$varYm, ClassRes$training_dataset )
+                                                     ClassRes$testing_result <- EvaluateMLR( ClassRes$model, ClassRes$testing_dataset )
+                                                     ClassRes$method <- input$method } #, 
                # "kNN" = {ClassRes$model <- RunKNN(  )}, 
                # "SVM" = {ClassRes$model <- RunSVM(   )}, 
                # "Random forest" = {ClassRes$model <- RunRF(   )}, 
@@ -630,7 +650,8 @@ server <- function( input, output, session) {
     # currently displays a summary of each model
     observeEvent( input$GoClassify, {
     output$ClassOutput <- renderPrint ({
-        switch( input$method,
+        req( ClassRes$method )
+        switch( ClassRes$method,
                "LDA" =  { print( ClassRes$model)  },
                "QDA" =  { print( ClassRes$model)  },
                "Logistic regression" = { print( summary( ClassRes$model) ) },
@@ -648,6 +669,14 @@ server <- function( input, output, session) {
     }) 
     })
     
+    
+    # User can choose the reference label
+    # output$VarLab <- renderUI ({
+    #     req( input$varXm)
+    #     if ( length( levels( CatData()[, input$varXm ]) ) == 2 )
+    #         selectInput("VarXLab", "Choose your reference label", levels( CatData()[, input$varXm ])  )
+    #   
+    # })
     
     # Render model output for the last tab
     output$AnalysisRes <- renderPrint( {   
@@ -845,17 +874,34 @@ server <- function( input, output, session) {
             set3 <- subset( ClassRes$testing_dataset, factor( ClassRes$testing_dataset [, input$varXm ], ordered = F) != ClassRes$testing_result$class)
             set3[, input$varXm ] <- factor( set3[,input$varXm ], ordered = F )
             
-            if ( nrow(set3) != 0 )
-                ggplot( data = set1, aes ( x = !!input$varXc , y = !!input$varYc) ) +
-                geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varCc, shape = '20')) +
-                geom_point( data = set2, aes( x = !!input$varXc  , y =  !!input$varYc, colour = !!input$varCc, shape = '8'), size = 4) +
-                geom_point( data = set3, aes( x = !!input$varXc , y =  !!input$varYc , colour =!!input$varCc, shape ='diamond open'), size = 3) +
-                scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'testing', 'misclassified'), values = c('circle', 'asterisk', 'diamond open')) 
-            else
-                ggplot( data = set1, aes ( x = !!input$varXc , y = !!input$varYc) ) +
-                geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varCc, shape = '20')) +
-                geom_point( data = set2, aes( x = !!input$varXc , y =  !!input$varYc, colour = !!input$varCc, shape = '8'), size = 4) +
-                scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'testing'), values = c('circle', 'asterisk')) 
+            if (  input$DataSplit < 100) { 
+                if ( nrow(set3) != 0 )
+                    { 
+                    ggplot( data = set1, aes ( x = !!input$varXc , y = !!input$varYc) ) +
+                    geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varCc, shape = '20')) +
+                    geom_point( data = set2, aes( x = !!input$varXc  , y =  !!input$varYc, colour = !!input$varCc, shape = '8'), size = 4) +
+                    geom_point( data = set3, aes( x = !!input$varXc , y =  !!input$varYc , colour =!!input$varCc, shape ='diamond open'), size = 3) +
+                    scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'testing', 'misclassified'), values = c('circle', 'asterisk', 'diamond open')) }
+                else
+                { 
+                    ggplot( data = set1, aes ( x = !!input$varXc , y = !!input$varYc) ) +
+                    geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varCc, shape = '20')) +
+                    geom_point( data = set2, aes( x = !!input$varXc , y =  !!input$varYc, colour = !!input$varCc, shape = '8'), size = 4) +
+                    scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'testing'), values = c('circle', 'asterisk')) 
+                    }
+             }
+             if ( input$DataSplit == 100) {
+                if ( nrow(set3) != 0 )
+                    ggplot( data = set1, aes ( x = !!input$varXc , y = !!input$varYc) ) +
+                    geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varCc, shape = '20')) +
+                    geom_point( data = set3, aes( x = !!input$varXc , y =  !!input$varYc , colour =!!input$varCc, shape ='diamond open'), size = 3) +
+                    scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'misclassified'), values = c('circle', 'diamond open'))
+                else
+                    ggplot( data = set1, aes ( x = !!input$varXc , y = !!input$varYc) ) +
+                    geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varCc, shape = '20')) +
+                    scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training'), values = c('circle', 'asterisk'))
+            }
+
     } )
     
     # Prediction data plot
@@ -941,7 +987,7 @@ server <- function( input, output, session) {
         if ( is.null( input$EviOptions ) )
             showNotification(  "Choose at least one LR estimation method from the list!", duration = 2, type = "error")
         
-        if ( as.numeric(input$pTrain) < 0 | as.numeric(input$pValid) < 0 | as.numeric(input$pTest) < 0 |
+        if ( as.numeric(input$pTrain) <= 0 | as.numeric(input$pValid) <= 0 | as.numeric(input$pTest) <= 0 |
              as.numeric(input$pTrain) >= 100 | as.numeric(input$pValid) >= 100 | as.numeric(input$pTest) >= 100 )
             showNotification(  "Percentage allocation of any of the training, validation and testing datasets has to be greater than 0 and less than 100% ", duration = 5, type = "error")
         

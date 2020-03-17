@@ -21,11 +21,17 @@ GetDataByClass <- function ( dataset, cls = "numeric")
 
 
 DataTrainTest <- function ( data, per = 50)
-{
-    trainInd <- sample( 1: dim( data )[1], size = per/100 *dim( data )[1] )
-      
-    dataTrain <- data [ trainInd, ]
-    dataTest  <- data [ -trainInd,  ]
+{   
+    if ( per <100) {
+        trainInd <- sample( 1: dim( data )[1], size = per/100 *dim( data )[1] )
+        dataTrain <- data [ trainInd, ]
+        dataTest  <- data [ -trainInd,  ] } 
+    
+    # if percentage split =100 then both training and testing sets are the data (
+    # thus obtaining fitted values instead of predictions 
+    if ( per == 100) {
+        dataTrain <- data  
+        dataTest  <- data   } 
     
     return( list( dataTrain, dataTest ))
 }
@@ -89,6 +95,7 @@ EvaluateQDA <- function ( model, testing_dataset )
 RunLR <- function ( varX,  varY, dataset )
 {   
     dataset[, varX] <- as.factor( dataset[, varX] )
+  
     f <- NULL
     outcome <- varX
     variables <- varY 
@@ -119,7 +126,7 @@ EvaluateLR <- function ( model, testing_dataset )
 
 
 # Firth logistic regression classifier
-RunLRF <- function ( varX, varY, dataset  )
+RunLRF <- function ( varX, varY, dataset, VarXLab  )
 {   
     dataset[, varX] <- as.factor( dataset[, varX] )
     f <- NULL
@@ -159,7 +166,7 @@ RunMLR <- function ( varX, varY, dataset )
     variables <- varY 
     f <- as.formula(   paste(outcome, paste(variables, collapse = " + "),  sep = " ~ "))
     
-    m <-  multinom( formula = f, data = dataset )
+    m <- nnet::multinom( formula = f, data = dataset )
     
     z <- summary(m)$coefficients / summary(m)$standard.errors
     m$pval <- (1 - pnorm( abs(z), 0, 1) )*2
