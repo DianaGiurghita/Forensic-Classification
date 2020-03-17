@@ -860,47 +860,51 @@ server <- function( input, output, session) {
                  ClassRes$training_dataset,  ClassRes$testing_dataset, ClassRes$testing_result$class,
                  names( datasetInput() ) %in% names( ClassRes$training_dataset) )
             
-            # training dataset points
+            # Training dataset points
             set1 <- ClassRes$training_dataset
             set1[, input$varXm ] <- factor( set1[,input$varXm ], ordered = F )
           
-            # testing dataset points with the model predicted class
+            # Testing dataset points with the model predicted class
             set2 <- ClassRes$testing_dataset 
       
             set2[, input$varXm] <- ClassRes$testing_result$class
             
-            # make sure both factors are unordered otherwise subsetting will cause problems if one of the cateogries doens't have all the levels as the other
+            # Make sure both factors are unordered otherwise subsetting will cause problems if one of the cateogries doens't have all the levels as the other
             # a factor can only be compared to another factor with an identical set of levels
             set3 <- subset( ClassRes$testing_dataset, factor( ClassRes$testing_dataset [, input$varXm ], ordered = F) != ClassRes$testing_result$class)
             set3[, input$varXm ] <- factor( set3[,input$varXm ], ordered = F )
-            
+           
+            # Show different plots (training, prediction, missclassified points) or 
+            # just missclassified observations based on training dataset split
             if (  input$DataSplit < 100) { 
                 if ( nrow(set3) != 0 )
-                    { 
+                  
                     ggplot( data = set1, aes ( x = !!input$varXc , y = !!input$varYc) ) +
                     geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varCc, shape = '20')) +
                     geom_point( data = set2, aes( x = !!input$varXc  , y =  !!input$varYc, colour = !!input$varCc, shape = '8'), size = 4) +
                     geom_point( data = set3, aes( x = !!input$varXc , y =  !!input$varYc , colour =!!input$varCc, shape ='diamond open'), size = 3) +
-                    scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'testing', 'misclassified'), values = c('circle', 'asterisk', 'diamond open')) }
+                    scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'testing', 'misclassified'), values = c('circle', 'asterisk', 'diamond open')) 
                 else
-                { 
+             
                     ggplot( data = set1, aes ( x = !!input$varXc , y = !!input$varYc) ) +
                     geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varCc, shape = '20')) +
                     geom_point( data = set2, aes( x = !!input$varXc , y =  !!input$varYc, colour = !!input$varCc, shape = '8'), size = 4) +
                     scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'testing'), values = c('circle', 'asterisk')) 
-                    }
-             }
-             if ( input$DataSplit == 100) {
+                    
+            }
+            else {
+              if ( input$DataSplit == 100){ 
                 if ( nrow(set3) != 0 )
-                    ggplot( data = set1, aes ( x = !!input$varXc , y = !!input$varYc) ) +
-                    geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varCc, shape = '20')) +
-                    geom_point( data = set3, aes( x = !!input$varXc , y =  !!input$varYc , colour =!!input$varCc, shape ='diamond open'), size = 3) +
-                    scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'misclassified'), values = c('circle', 'diamond open'))
+                     ggplot( data = set1, aes ( x = !!input$varXc , y = !!input$varYc) ) +
+                     geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varCc, shape = '20')) +
+                     geom_point( data = set3, aes( x = !!input$varXc , y =  !!input$varYc , colour =!!input$varCc, shape ='diamond open'), size = 3) +
+                     scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'misclassified'), values = c('circle', 'diamond open'))
+                 
                 else
                     ggplot( data = set1, aes ( x = !!input$varXc , y = !!input$varYc) ) +
                     geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varCc, shape = '20')) +
                     scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training'), values = c('circle', 'asterisk'))
-            }
+             }}
 
     } )
     
