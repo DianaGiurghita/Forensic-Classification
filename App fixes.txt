@@ -7,8 +7,8 @@ Immediate fixes (for paper deadline):
 - T: app crashing when using multivariate lr
 - T: In the Likelihood ratio tab, when I choose all three methods the results only list bayes and net. Surely one of those should be firth?
 - D: diabetes does not work with Firth logistic regression
-- D: make an averages table for the Likelihood ratio comparison
 - T: we should be able to compare methods in the Likelihood ratio tab and the Classification tab: make the training set the same and option to use the same seed?
+- [ADDED] D: make an averages table for the Likelihood ratio comparison
 - [ADDED] T: allow classification method running with training set to 100% (i.e. the whole data set is used for fitting the model)
 - [FIXED] T: numerical data summaries not working for Tereza
 - [FIXED] T: In the cross-validation options, if I make the training percentage 100% I get a warning, but the model still runs.
@@ -32,6 +32,6 @@ Additional fixes/features for later:
 - [FIXED] T: redesign menu so that each tab has the relevant options to that tab only (prevent long pages due to many options in leftside menu)
 - check warnings when using Glass: "Warning in confusionMatrix.default(reference = as.factor(ClassRes$testing_dataset[,  :
   Levels are not in the same order for reference and data. Refactoring data to match." 
-- check warnings: 
+
 
 
