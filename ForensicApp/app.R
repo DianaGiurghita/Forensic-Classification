@@ -231,8 +231,6 @@ ui <- navbarPage( theme = shinytheme("flatly"),
 
                     tabPanel(value = "ClassPerf",
                              h5(strong("Classification performance")),
-                              
-                             
                              verticalLayout(  
                                               column( 3, DT::dataTableOutput("ConfMat" )%>% withSpinner(color="#0dc5c1") ),
                                               tags$br(),
@@ -320,6 +318,13 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                                              style="color: #fff; background-color: #28bb9b; border-color: #87d5c5" )
                                 ),
                         
+                        conditionalPanel( condition =  "input.EvidenceResults == 'eSumTable' ", 
+                                          h5( strong("LR results summary")),
+                                          selectInput( "eSum", "Choose how to summarise the data:", choices = c("mean", "median", "min", "max"))
+                                          # actionButton("GoEvidPredUpload", "Upload", icon("file-import"), width = '100%',
+                                          #              style="color: #fff; background-color: #28bb9b; border-color: #87d5c5" )
+                                ),
+                        
                         conditionalPanel( condition =  "input.EvidenceResults == 'ePred' ", 
                                 h5( strong("Predictions")),
                                 fileInput("EvidPredData", "Upload file containing new data", 
@@ -336,9 +341,17 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                           tabPanel(value = "eTable",
                                    h5(strong("Analysis results")),
                                    tags$br(),
-                                   "Table of performance measures using selected methods",
+                                   "Table of performance measures using selected methods for all simulations",
                                    DT::dataTableOutput("evidence_results") %>% withSpinner(color="#0dc5c1")
-                                    ),
+                          ),
+                          
+                          tabPanel(value = "eSumTable",
+                                   h5(strong("Analysis results summary")),
+                                   tags$br(),
+                                   "Summary of performance measures using selected methods",
+                                   DT::dataTableOutput("evidence_results_sum") %>% withSpinner(color="#0dc5c1")
+                          ),
+                          
                           tabPanel(value = "ePlots",
                                    h5(strong("Plots")),
                                    fluidRow( column(6, plotOutput("EviPlots1")  %>% withSpinner(color="#0dc5c1")),
@@ -349,6 +362,7 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                                              column(6, plotOutput("EviPlots6")  %>% withSpinner(color="#0dc5c1"))),
                                    fluidRow( column(6, plotOutput("EviPlots7")  %>% withSpinner(color="#0dc5c1")))
                           ),
+                          
                           tabPanel(value = "ePred",
                                    h5(strong("Prediction")),  
                                    "Evidence prediction for new observations - coming soon"
@@ -885,7 +899,6 @@ server <- function( input, output, session) {
                     geom_point( data = set3, aes( x = !!input$varXc , y =  !!input$varYc , colour =!!input$varCc, shape ='diamond open'), size = 3) +
                     scale_shape_manual(name = 'Data', guide = 'legend', labels = c('training', 'testing', 'misclassified'), values = c('circle', 'asterisk', 'diamond open')) 
                 else
-             
                     ggplot( data = set1, aes ( x = !!input$varXc , y = !!input$varYc) ) +
                     geom_point( alpha = 0.5, size = 2, aes( colour = !!input$varCc, shape = '20')) +
                     geom_point( data = set2, aes( x = !!input$varXc , y =  !!input$varYc, colour = !!input$varCc, shape = '8'), size = 4) +
@@ -999,6 +1012,21 @@ server <- function( input, output, session) {
             showNotification(  "The number of repetitions has to be a positive integer!", duration = 2, type = "error")
     })
 
+    # Displaying a summary table of the computed measures for all selected methods and estimation types
+    output$evidence_results_sum <- renderDataTable( {
+        req( dim(EviRes$predm)[1] > 0, isolate( input$GoEvidence), input$eSum )
+        cm <- EviRes$predm
+        #iris %>% group_by(Species) %>% summarise_all(list(M=mean, Med=median))
+        # c
+        cms <-  cm %>% group_by( Method, EstimationType) %>% summarise_all( funs( !!input$eSum), na.rm = TRUE ) %>% mutate_if( is.numeric, round, 3)
+        print(cms)
+        DT::datatable ( cms , 
+                        rownames= FALSE, 
+                        caption = paste("LR summary results table using: ", input$eSum ),
+                        options = list(dom = "t", scrollX = TRUE))
+    } )
+
+    
         # Displaying a table of the computed measures for all selected methods and estimation types
     output$evidence_results <- renderDataTable( {
         req( dim(EviRes$predm)[1] > 0, isolate( input$GoEvidence) )
