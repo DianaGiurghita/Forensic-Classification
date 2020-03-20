@@ -6,8 +6,8 @@ Immediate fixes (for paper deadline):
 - T: add other relevant logos from Eugenio
 - T: app crashing when using multivariate lr
 - T: In the Likelihood ratio tab, when I choose all three methods the results only list bayes and net. Surely one of those should be firth?
-- D: diabetes does not work with Firth logistic regression
-- T: we should be able to compare methods in the Likelihood ratio tab and the Classification tab: make the training set the same and option to use the same seed?
+- D: glass crashes app when choosing QDA and multinomial.
+- [ADDED] T: we should be able to compare methods in the Likelihood ratio tab and the Classification tab
 - [ADDED] D: make an averages table for the Likelihood ratio comparison
 - [ADDED] T: allow classification method running with training set to 100% (i.e. the whole data set is used for fitting the model)
 - [FIXED] T: numerical data summaries not working for Tereza
@@ -26,12 +26,18 @@ Immediate fixes (for paper deadline):
 
 
 Additional fixes/features for later:
+- D: diabetes does not work with Firth logistic regression
 - additional methods for classification: knn, naive Bayes, random forests, neural networks etc.
 - use plotly for interactive graphics 
 - create color palette for plots to allow for large numbers of levels in a categorical variable
 - [FIXED] T: redesign menu so that each tab has the relevant options to that tab only (prevent long pages due to many options in leftside menu)
 - check warnings when using Glass: "Warning in confusionMatrix.default(reference = as.factor(ClassRes$testing_dataset[,  :
   Levels are not in the same order for reference and data. Refactoring data to match." 
+- List of awesome shiny extensions: https://github.com/nanxstats/awesome-shiny-extensions#dashboard-theming 
+- Prettier input boxes etc: https://dreamrs.github.io/shinyWidgets/
+- Pretty icons: https://ionicons.com
+- user feedback: https://github.com/merlinoa/shinyFeedback
+- animated icons: https://github.com/emitanaka/anicon
 
 
 

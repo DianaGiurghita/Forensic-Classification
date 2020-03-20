@@ -421,7 +421,7 @@ comp_measures <- function ( actual_class, model_prediction, LR)
     dataset$Actual    <- ifelse( actual_class == levels ( actual_class)[1],  0, 1) 
     dataset$Predicted <- ifelse( model_prediction == levels ( model_prediction)[1],  0, 1) 
     dataset$Odds      <- LR
-    
+ 
     #return ( list ( actual_class, model_prediction, dataset)) 
     # odds for class "1" in the test set
     LR.same <- dataset$Odds [ dataset$Actual == 1]
@@ -452,9 +452,9 @@ comp_measures <- function ( actual_class, model_prediction, LR)
     F1          <- 2 * precision * recall / (precision + recall)
 
     # Mis-classification rate:
-    mis_classif <- (FP + FN) / ( TP + TN + FP + FN)
-    
-    return (  c(  precision,  recall, specificity,  accuracy,   F1,  mis_classif,  ece@ece) )
+    (mis_classif <- (FP + FN) / ( TP + TN + FP + FN))
+
+    return (  c(  Precision=precision,  Recall=recall, Specificity=specificity,  Accuracy=accuracy,  F1= F1,  MissClassification=mis_classif,  Ece=ece@ece) )
  
   
 }
@@ -479,7 +479,7 @@ EvRun <- function( train, valid, test, varXm, varYe, method, method2)
         }
     
     # Get classification measures for test data
-    cm <- comp_measures ( actual_class = valid[, varXm], model_prediction = m$class, LR = m$LR)
+    cm <- comp_measures ( actual_class = test[, varXm], model_prediction = m$class, LR = m$LR)
     
     # Add method and LR estimation method to the return values
     cmm <- data.frame(  t(cm),  Method = method,  EstimationType = method2 )

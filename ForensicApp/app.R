@@ -307,6 +307,9 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                                                                ), selected = 1),
                                 bsTooltip("EviOptions", "Select all options you want included in your comparison. For datasets with more than 6 variables only univariate LR options are available",       
                                          options = NULL),
+                                h5( strong("Compare with other classification methods")),
+                                checkboxInput( "addMethods", label = "", value = FALSE),
+                                    uiOutput("addMethods"),
                                 bsCollapse(id = "collapseLRCV", open = "Panel 2",
                                           bsCollapsePanel(h5( strong("Cross-validation")),
                                                           textInput("pTrain", "Enter the % of data for training", "50"),
@@ -332,6 +335,8 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                                 actionButton("GoEvidPredUpload", "Upload", icon("file-import"), width = '100%',
                                             style="color: #fff; background-color: #28bb9b; border-color: #87d5c5" )
                                 )
+                        
+                        
                   ),
                   
                   mainPanel(
@@ -367,7 +372,6 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                                    h5(strong("Prediction")),  
                                    "Evidence prediction for new observations - coming soon"
                           )
-
                           
                           )
                   )
@@ -501,7 +505,11 @@ server <- function( input, output, session) {
        
         DT::datatable (datasetInput(), rownames = F,
                        options = list(lengthMenu = c(5, 10, 20), 
-                                      pageLength = 5, scrollX = TRUE ) 
+                                      pageLength = 5, scrollX = TRUE,
+                                      initComplete = JS(
+                                          "function(settings, json) {",
+                                          "$(this.api().table().header()).css({'background-color': '#556271', 'color': '#fff'});",
+                                          "}")) 
                        )
         } )
     
@@ -511,7 +519,12 @@ server <- function( input, output, session) {
         if(input$checkNum == TRUE)
         DT::datatable (  round( descr( NumData(), stats = c( "min", "q1", "med", "mean" ,"q3", "max", "sd"), 
                                 transpose = TRUE, headings = FALSE, justify = "c", style = "simple"), 3),
-                         options = list(  dom = 't')  
+                         options = list(  dom = 't',
+                                          scrollX = TRUE,
+                                          initComplete = JS(
+                                              "function(settings, json) {",
+                                              "$(this.api().table().header()).css({'background-color': '#556271', 'color': '#fff'});",
+                                              "}"))  
                      )
          } )
     
@@ -544,14 +557,19 @@ server <- function( input, output, session) {
                      f <- data.frame(f)
                      f <- round( f[  -( nrow(f) -1  ), c(1,2,3) ], 3)
                      colnames(f) <- c("Frequency", "%", "Cumulative %")
-                     output[[id]] <- DT::renderDataTable( f, caption = input$CatVar[i], options = list( dom = 't') )
+                     output[[id]] <- DT::renderDataTable( f, caption = input$CatVar[i], 
+                                                          options = list( dom = 't',
+                                                                          initComplete = JS(
+                                                                              "function(settings, json) {",
+                                                                              "$(this.api().table().header()).css({'background-color': '#556271', 'color': '#fff'});",
+                                                                              "}") ) )
                     }
                 }
     )
     
-    ############## Analysis tab
+    ############## Analysis tab ----------
     
-    # Initialize the object that contains the model outputs and inputs
+    # Initialize the object that contains the model outputs and inputs ----
     ClassRes <- reactiveValues( )
        ClassRes$model <- NULL
        ClassRes$method <- NULL
@@ -589,6 +607,9 @@ server <- function( input, output, session) {
     #### Error notifications for classification tab: training percentage choice, random seed choice and choosing predictors
     observeEvent(input$GoClassify, {
 
+    # Conditions for error/warning messages -----------------------------------
+
+    
         if ( is.null( input$varYm) )
             showNotification(  "Choose at least one predictor from the list!", duration = 2, type = "error")
     
@@ -611,22 +632,26 @@ server <- function( input, output, session) {
     })
     
     
-    # Selecting method 
+    # Selecting method ------
     observeEvent( input$GoClassify,  {
         
-        # Ensure user selects required options
+        # Ensure user selects required options ------------------------------------------------------
         req(input$varXm, input$varYm, input$method, input$DataSplit <=100, input$DataSplit >0, 
             input$RandSeed %% 1 == 0, input$RandSeed >0)
         
-        # set seed to whatever the user input
+        # set seed to whatever the user input------------------------------------------------------
         set.seed(ClassRes$seed )
         
-        # split data set into testing/training 
+        # split data set into testing/training ------------------------------------------------------
         ClassRes$data <- DataTrainTest( data = datasetInput(), per = input$DataSplit)
         ClassRes$training_dataset <- as.data.frame(ClassRes$data[1])
         ClassRes$testing_dataset  <- as.data.frame(ClassRes$data[2])
+
+
+
+        # fit selected model ------------------------------------------------------
+
     
-        # fit selected model
         switch(input$method,
                "LDA" =  {ClassRes$model <-  RunLDA( input$varXm, input$varYm, ClassRes$training_dataset  )
                          ClassRes$testing_result <- EvaluateLDA( ClassRes$model, ClassRes$testing_dataset )
@@ -744,7 +769,11 @@ server <- function( input, output, session) {
         out <- tryCatch( 
                 DT::datatable (dataset, rownames = F,
                        options = list(lengthMenu = c(5, 10, 15),
-                                      pageLength = 5, scrollX = TRUE),
+                                      pageLength = 5, scrollX = TRUE,
+                                      initComplete = JS(
+                                          "function(settings, json) {",
+                                          "$(this.api().table().header()).css({'background-color': '#556271', 'color': '#fff'});",
+                                          "}")  ),
                        callback = JS("var tips = [             
                                                 'Predicted class label using the model chosen',
                                                 'Likelihood Ratio - currently only available for binary classification'
@@ -763,13 +792,21 @@ server <- function( input, output, session) {
     output$training_set <- renderDataTable( {
         DT::datatable (ClassRes$training_dataset,
                         options = list(lengthMenu = c(5, 10, 20),
-                                        pageLength = 5 ))
+                                        pageLength = 5,
+                                        initComplete = JS(
+                                           "function(settings, json) {",
+                                           "$(this.api().table().header()).css({'background-color': '#556271', 'color': '#fff'});",
+                                           "}")  ))
     } )
     
     output$testing_set <- renderDataTable( {
         DT::datatable (ClassRes$testing_dataset,
                        options = list(lengthMenu = c(5, 10, 20),
-                                      pageLength = 5 ))
+                                      pageLength = 5,
+                                      initComplete = JS(
+                                          "function(settings, json) {",
+                                          "$(this.api().table().header()).css({'background-color': '#556271', 'color': '#fff'});",
+                                          "}")  ))
     } )
 
     # Classification measures and confusion matrix (buggy for uploaded dataset)
@@ -961,6 +998,14 @@ server <- function( input, output, session) {
         )
     })
     
+    output$addMethods <- renderUI (      
+                if (input$addMethods == TRUE )
+                        selectInput("addMethodsList", "", 
+                                    c("LDA","QDA","Logistic regression", "Firth logistic regression"), 
+                                    multiple = T )
+    )
+            
+    
     observeEvent( input$GoEvidence, {
         
     # Requirements so app doesn't crash or show errors
@@ -978,7 +1023,7 @@ server <- function( input, output, session) {
         EviRes$testing_dataset    <- as.data.frame( EviRes$data[[2]])
         EviRes$validation_dataset <- as.data.frame( EviRes$data[[3]])
         
-        # for each method, produce and store performance measure
+        # for each LR method, produce and store performance measure
         for ( j in 1 : length( input$EviMethod) ) {
             for( k in 1 : length( input$EviOptions) ) {
                 p <- try (EvRun( EviRes$training_dataset, EviRes$validation_dataset, EviRes$testing_dataset, input$varXe, input$varYe, input$EviMethod[j], input$EviOptions[k]) )
@@ -986,6 +1031,60 @@ server <- function( input, output, session) {
                     EviRes$predm  <- rbind( EviRes$predm, p)
             }
         }
+        
+        # Run other classification methods as requested by user
+        if ( input$addMethods == TRUE)
+        {
+            req(input$addMethodsList) 
+            for ( i in 1: length( input$addMethodsList ) )
+                switch(input$addMethodsList[i],
+                       "LDA" =  {   EviRes$model <-  RunLDA( input$varXe, input$varYe, rbind( EviRes$training_dataset, EviRes$validation_dataset) )
+                                    EviRes$testing_result <- EvaluateLDA( EviRes$model, EviRes$testing_dataset )
+    
+                                    # Get classification measures for test data
+                                    cm <- comp_measures ( actual_class = EviRes$testing_dataset [, input$varXe], model_prediction = EviRes$testing_result$class, LR =  EviRes$testing_result$LR)
+                                    p <- data.frame(  t(cm),  Method = "LDA",  EstimationType = "Classification" )
+                                    
+                                    # Add to prediction matrix along all results 
+                                    EviRes$predm  <- rbind( EviRes$predm, p)
+                                },
+                       
+                       "QDA" =  {   EviRes$model <-  RunQDA( input$varXe, input$varYe, rbind( EviRes$training_dataset, EviRes$validation_dataset)  )
+                                    EviRes$testing_result <- EvaluateQDA( EviRes$model, EviRes$testing_dataset )
+                                    
+                                    # Get classification measures for test data
+                                    cm <- comp_measures ( actual_class = EviRes$testing_dataset [, input$varXe], model_prediction = EviRes$testing_result$class, LR =  EviRes$testing_result$LR)
+                                    p <- data.frame(  t(cm),  Method = "QDA",  EstimationType = "Classification" )
+                                    
+                                    # Add to prediction matrix along all results 
+                                    EviRes$predm  <- rbind( EviRes$predm, p)
+                                    },
+                       
+                       "Logistic regression" = {
+                                    EviRes$model <-  RunLR( input$varXe, input$varYe, rbind( EviRes$training_dataset, EviRes$validation_dataset)  )
+                                    EviRes$testing_result <- EvaluateLR( EviRes$model, EviRes$testing_dataset ) 
+                                    
+                                    # Get classification measures for test data
+                                    cm <- comp_measures ( actual_class = EviRes$testing_dataset [, input$varXe], model_prediction = EviRes$testing_result$class, LR =  EviRes$testing_result$LR)
+                                    p <- data.frame(  t(cm),  Method = "Logistic regression",  EstimationType = "Classification" )
+                                    
+                                    # Add to prediction matrix along all results 
+                                    EviRes$predm  <- rbind( EviRes$predm, p)
+                                    },
+                       
+                       "Firth logistic regression" = {
+                                    EviRes$model <-  RunLRF( input$varXe, input$varYe, rbind( EviRes$training_dataset, EviRes$validation_dataset) )
+                                    EviRes$testing_result <- EvaluateLRF( EviRes$model, EviRes$testing_dataset ) 
+                                    
+                                    # Get classification measures for test data
+                                    cm <- comp_measures ( actual_class = EviRes$testing_dataset [, input$varXe], model_prediction = EviRes$testing_result$class, LR =  EviRes$testing_result$LR)
+                                    p <- data.frame(  t(cm),  Method = "Firth logistic regression",  EstimationType = "Classification" )
+                                    
+                                    # Add to prediction matrix along all results 
+                                    EviRes$predm  <- rbind( EviRes$predm, p)
+                                    })
+            }
+                   
     }
 })
 
@@ -1008,8 +1107,12 @@ server <- function( input, output, session) {
              as.numeric(input$pTrain) >= 100 | as.numeric(input$pValid) >= 100 | as.numeric(input$pTest) >= 100 )
             showNotification(  "Percentage allocation of any of the training, validation and testing datasets has to be greater than 0 and less than 100% ", duration = 5, type = "error")
         
-        if ( as.numeric(input$RepeatN) <= 0 | as.numeric(input$RepeatN) %% 1 != 0  )
+        if ( as.numeric(input$RepeatN) <= 0 )
             showNotification(  "The number of repetitions has to be a positive integer!", duration = 2, type = "error")
+        
+        if ( input$addMethods == TRUE & !( length( input$addMethodsList) > 0)  )
+            showNotification(  "Choose at least one method from the list of additional classification methods!", duration = 2, type = "error")
+        
     })
 
     # Displaying a summary table of the computed measures for all selected methods and estimation types
@@ -1023,7 +1126,11 @@ server <- function( input, output, session) {
         DT::datatable ( cms , 
                         rownames= FALSE, 
                         caption = paste("LR summary results table using: ", input$eSum ),
-                        options = list(dom = "t", scrollX = TRUE))
+                        options = list(dom = "t", scrollX = TRUE,
+                                       initComplete = JS(
+                                           "function(settings, json) {",
+                                           "$(this.api().table().header()).css({'background-color': '#556271', 'color': '#fff'});",
+                                           "}")  ))
     } )
 
     
@@ -1031,10 +1138,14 @@ server <- function( input, output, session) {
     output$evidence_results <- renderDataTable( {
         req( dim(EviRes$predm)[1] > 0, isolate( input$GoEvidence) )
         cm <- EviRes$predm
-        DT::datatable ( cbind( round( cm[,1:7], 3), cm[, 8:9] ),
+        DT::datatable ( cbind( cm[, 8:9], round( cm[,1:7], 3) ),
                         rownames= FALSE,
                         options = list(lengthMenu = c(5, 10, 20),
-                                       pageLength = 5 ))
+                                       pageLength = 5,
+                                       initComplete = JS(
+                                           "function(settings, json) {",
+                                           "$(this.api().table().header()).css({'background-color': '#556271', 'color': '#fff'});",
+                                           "}")  ))
     } )
 
     ## Plots of the measures computed: Generating the output list for the plots for each measure computed
