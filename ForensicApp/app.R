@@ -1029,6 +1029,7 @@ server <- function( input, output, session) {
                 p <- try (EvRun( EviRes$training_dataset, EviRes$validation_dataset, EviRes$testing_dataset, input$varXe, input$varYe, input$EviMethod[j], input$EviOptions[k]) )
                 if ( class(p) == "data.frame" )
                     EviRes$predm  <- rbind( EviRes$predm, p)
+                #print(input$EviMethod[j] )
             }
         }
         
@@ -1038,50 +1039,54 @@ server <- function( input, output, session) {
             req(input$addMethodsList) 
             for ( i in 1: length( input$addMethodsList ) )
                 switch(input$addMethodsList[i],
-                       "LDA" =  {   EviRes$model <-  RunLDA( input$varXe, input$varYe, rbind( EviRes$training_dataset, EviRes$validation_dataset) )
-                                    EviRes$testing_result <- EvaluateLDA( EviRes$model, EviRes$testing_dataset )
+                       "LDA" =  {   EviRes$model <-  try( RunLDA( input$varXe, input$varYe, rbind( EviRes$training_dataset, EviRes$validation_dataset) ))
+                                    EviRes$testing_result <- try( EvaluateLDA( EviRes$model, EviRes$testing_dataset ))
     
                                     # Get classification measures for test data
                                     cm <- comp_measures ( actual_class = EviRes$testing_dataset [, input$varXe], model_prediction = EviRes$testing_result$class, LR =  EviRes$testing_result$LR)
                                     p <- data.frame(  t(cm),  Method = "LDA",  EstimationType = "Classification" )
-                                    
-                                    # Add to prediction matrix along all results 
-                                    EviRes$predm  <- rbind( EviRes$predm, p)
+                                    #print( p)
+                                    if ( class(p) == "data.frame" )
+                                        # Add to prediction matrix along all results 
+                                        EviRes$predm  <- rbind( EviRes$predm, p)
                                 },
                        
-                       "QDA" =  {   EviRes$model <-  RunQDA( input$varXe, input$varYe, rbind( EviRes$training_dataset, EviRes$validation_dataset)  )
-                                    EviRes$testing_result <- EvaluateQDA( EviRes$model, EviRes$testing_dataset )
+                       "QDA" =  {   EviRes$model <-  try(RunQDA( input$varXe, input$varYe, rbind( EviRes$training_dataset, EviRes$validation_dataset)  ))
+                                    EviRes$testing_result <- try( EvaluateQDA( EviRes$model, EviRes$testing_dataset ))
                                     
                                     # Get classification measures for test data
                                     cm <- comp_measures ( actual_class = EviRes$testing_dataset [, input$varXe], model_prediction = EviRes$testing_result$class, LR =  EviRes$testing_result$LR)
                                     p <- data.frame(  t(cm),  Method = "QDA",  EstimationType = "Classification" )
                                     
-                                    # Add to prediction matrix along all results 
-                                    EviRes$predm  <- rbind( EviRes$predm, p)
+                                    if ( class(p) == "data.frame" )    
+                                        # Add to prediction matrix along all results 
+                                        EviRes$predm  <- rbind( EviRes$predm, p)
                                     },
                        
                        "Logistic regression" = {
-                                    EviRes$model <-  RunLR( input$varXe, input$varYe, rbind( EviRes$training_dataset, EviRes$validation_dataset)  )
-                                    EviRes$testing_result <- EvaluateLR( EviRes$model, EviRes$testing_dataset ) 
-                                    
+                                    EviRes$model <-  try( RunLR( input$varXe, input$varYe, rbind( EviRes$training_dataset, EviRes$validation_dataset)  ))
+                                    EviRes$testing_result <- try( EvaluateLR( EviRes$model, EviRes$testing_dataset ) )
+                                    #print(EviRes$testing_result )
                                     # Get classification measures for test data
                                     cm <- comp_measures ( actual_class = EviRes$testing_dataset [, input$varXe], model_prediction = EviRes$testing_result$class, LR =  EviRes$testing_result$LR)
-                                    p <- data.frame(  t(cm),  Method = "Logistic regression",  EstimationType = "Classification" )
-                                    
-                                    # Add to prediction matrix along all results 
-                                    EviRes$predm  <- rbind( EviRes$predm, p)
+                                    p <- data.frame(  t(cm),  Method = "LogisticReg Class",  EstimationType = "Classification" )
+                                    #print(p)
+                                    if ( class(p) == "data.frame" )    
+                                        # Add to prediction matrix along all results 
+                                        EviRes$predm  <- rbind( EviRes$predm, p)
                                     },
                        
                        "Firth logistic regression" = {
-                                    EviRes$model <-  RunLRF( input$varXe, input$varYe, rbind( EviRes$training_dataset, EviRes$validation_dataset) )
-                                    EviRes$testing_result <- EvaluateLRF( EviRes$model, EviRes$testing_dataset ) 
-                                    
+                                    EviRes$model <-  try( RunLRF( input$varXe, input$varYe, rbind( EviRes$training_dataset, EviRes$validation_dataset) ))
+                                    EviRes$testing_result <- try( EvaluateLRF( EviRes$model, EviRes$testing_dataset ) )
+                                    #print(EviRes$testing_result )
                                     # Get classification measures for test data
                                     cm <- comp_measures ( actual_class = EviRes$testing_dataset [, input$varXe], model_prediction = EviRes$testing_result$class, LR =  EviRes$testing_result$LR)
-                                    p <- data.frame(  t(cm),  Method = "Firth logistic regression",  EstimationType = "Classification" )
-                                    
-                                    # Add to prediction matrix along all results 
-                                    EviRes$predm  <- rbind( EviRes$predm, p)
+                                    p <- data.frame(  t(cm),  Method = "Firth Class",  EstimationType = "Classification" )
+                                    #print(p)
+                                    if ( class(p) == "data.frame" )
+                                        # Add to prediction matrix along all results 
+                                        EviRes$predm  <- rbind( EviRes$predm, p)
                                     })
             }
                    
@@ -1122,7 +1127,7 @@ server <- function( input, output, session) {
         #iris %>% group_by(Species) %>% summarise_all(list(M=mean, Med=median))
         # c
         cms <-  cm %>% group_by( Method, EstimationType) %>% summarise_all( funs( !!input$eSum), na.rm = TRUE ) %>% mutate_if( is.numeric, round, 3)
-        print(cms)
+        #print(cms)
         DT::datatable ( cms , 
                         rownames= FALSE, 
                         caption = paste("LR summary results table using: ", input$eSum ),

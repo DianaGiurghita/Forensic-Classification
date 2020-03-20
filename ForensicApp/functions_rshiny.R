@@ -421,6 +421,7 @@ comp_measures <- function ( actual_class, model_prediction, LR)
     dataset$Actual    <- ifelse( actual_class == levels ( actual_class)[1],  0, 1) 
     dataset$Predicted <- ifelse( model_prediction == levels ( model_prediction)[1],  0, 1) 
     dataset$Odds      <- LR
+    print(dataset)
  
     #return ( list ( actual_class, model_prediction, dataset)) 
     # odds for class "1" in the test set
