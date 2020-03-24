@@ -333,7 +333,7 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                                 h5( strong("Predictions")),
                                 fileInput("EviPredData", "Upload file containing new data", 
                                          accept = c( "text/csv",  "text/comma-separated-values,text/plain", ".csv")  ),
-                                checkboxInput("EviPredDataCheck", "Use the same data imported previously"),
+                               # checkboxInput("EviPredDataCheck", "Use the same data imported previously"),
                                 selectInput("EviPredMethod", label = h5( strong("Method")),
                                             choices = c( "", "Firth Glm" = "FirthGlm", "Bayes Glm" = "BayesGlm", "Glm Net" = "GlmNet"), multiple = F),
                                 selectInput("EviPredOptions",  label = h5( strong("LR estimation type")),  
@@ -1100,11 +1100,9 @@ server <- function( input, output, session) {
     ### Evidence Prediction tab ------
     # Import data set for prediction
     datasetEviPred <- eventReactive( input$GoEviPredUpload, 
-                                  { req( input$EviPredData$datapath, input$GoEviPredUpload  )
-                                    if( input$EviPredDataCheck == TRUE ) 
-                                        datasetEviPred <- datasetPred ()
-                                    else    
-                                        datasetEviPred <- import( input$EviPredData$datapath )        
+                                  { req( input$GoEviPredUpload, input$EviPredData$datapath   )
+                                    
+                                        datasetEviPred <- import( input$EviPredData$datapath )      
                                   })
     
     
@@ -1113,9 +1111,6 @@ server <- function( input, output, session) {
         if ( FALSE %in% ( names( datasetEviPred() ) %in%  names( datasetInput() ) )  )
             showNotification(  "The variables in the uploaded dataset do not match the dataset used for training!", duration = 10, type = "error")
         
-        # if (  input$EviPredDataCheck == TRUE &  class( try( datasetPred())) != "try-error" )  
-        #     showNotification( "No dataset was previously imported for prediction in the Classification Prediction tab!", duration = 2, type = "error")
-        # 
         
         if( input$EviPredMethod == FALSE | input$EviPredOptions == FALSE )
             showNotification( "Choose options for the prediction method!", duration = 2, type = "error")
@@ -1142,7 +1137,7 @@ server <- function( input, output, session) {
     ### Generate dataset table to display the data uploaded for prediction
     output$EviPredDataTab <- renderDataTable( {
         
-        req( EviRes$prediction, 
+        req( EviRes$prediction,  datasetEviPred(),
              names( datasetEviPred() ) %in%  names( datasetInput() ) )
         
         evd <- cbind( Prediction = EviRes$prediction$class, LR =  prettyNum( EviRes$prediction$LR, format = "fg", digits =3), datasetEviPred() ) 
