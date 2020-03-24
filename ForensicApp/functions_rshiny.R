@@ -503,8 +503,7 @@ EvRun <- function( train, valid, test, varXm, varYe, method, method2, fmode = "c
     else
         if (fmode == "prediction")
             if ( class(m) != "try-error")
-            {   print( data.frame(m) )
-                print( class(data.frame(m)))
+             {   
                 return( data.frame(m) )
             }
     
