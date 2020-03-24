@@ -299,7 +299,7 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                   sidebarPanel(width = 3,
                         conditionalPanel( condition =  "input.EvidenceResults == 'ePlots' ||  input.EvidenceResults == 'eTable'",         
                                 selectInput("EviMethod", label = h5( strong("Method")),
-                                           choices = c( "Firth GLM" = "firth", "Bayes GLM" = "bayes", "GLM Net" = "net"), multiple = T),
+                                           choices = c( "Firth Glm" = "FirthGlm", "Bayes Glm" = "Bayes Glm", "Glm Net" = "GlmNet"), multiple = T),
                                 uiOutput("varsYevidence"),
                                 checkboxGroupInput("EviOptions",  label = h5( strong("LR estimation type")),  
                                                   choices = c( "Univariate Gaussian LR" = "gaussian", "Univariate KDE LR" = "kernel"
@@ -307,15 +307,17 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                                                                ), selected = 1),
                                 bsTooltip("EviOptions", "Select all options you want included in your comparison. For datasets with more than 6 variables only univariate LR options are available",       
                                          options = NULL),
-                                h5( strong("Compare with other classification methods")),
-                                checkboxInput( "addMethods", label = "", value = FALSE),
-                                    uiOutput("addMethods"),
+                                h5( strong("Add other classification methods:")),
+                                selectInput("addMethodsList", "", 
+                                           c("LDA","QDA","Logistic regression", "Firth logistic regression"), 
+                                                multiple = T ),
                                 bsCollapse(id = "collapseLRCV", open = "Panel 2",
                                           bsCollapsePanel(h5( strong("Cross-validation")),
                                                           textInput("pTrain", "Enter the % of data for training", "50"),
                                                           textInput("pValid", "Enter the % of data for validation", "30"), 
                                                           textInput("pTest", "Enter the % of data for testing", "20"),
-                                                          textInput("RepeatN", "Enter the number of repeated iterations", "5")  
+                                                          textInput("RepeatN", "Enter the number of repeated iterations", "5"),
+                                                          numericInput("ESeed", "Enter random seed number", 23, min = 0 ) 
                                                           )),
                                 actionButton("GoEvidence", label = "Run evidence model", icon("play"), width = '100%',
                                              style="color: #fff; background-color: #28bb9b; border-color: #87d5c5" )
@@ -324,15 +326,19 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                         conditionalPanel( condition =  "input.EvidenceResults == 'eSumTable' ", 
                                           h5( strong("LR results summary")),
                                           selectInput( "eSum", "Choose how to summarise the data:", choices = c("mean", "median", "min", "max"))
-                                          # actionButton("GoEvidPredUpload", "Upload", icon("file-import"), width = '100%',
-                                          #              style="color: #fff; background-color: #28bb9b; border-color: #87d5c5" )
+                                          
                                 ),
                         
                         conditionalPanel( condition =  "input.EvidenceResults == 'ePred' ", 
                                 h5( strong("Predictions")),
-                                fileInput("EvidPredData", "Upload file containing new data", 
+                                fileInput("EviPredData", "Upload file containing new data", 
                                          accept = c( "text/csv",  "text/comma-separated-values,text/plain", ".csv")  ),
-                                actionButton("GoEvidPredUpload", "Upload", icon("file-import"), width = '100%',
+                                checkboxInput("EviPredDataCheck", "Use the same data imported previously"),
+                                selectInput("EviPredMethod", label = h5( strong("Method")),
+                                            choices = c( "", "Firth Glm" = "FirthGlm", "Bayes Glm" = "BayesGlm", "Glm Net" = "GlmNet"), multiple = F),
+                                selectInput("EviPredOptions",  label = h5( strong("LR estimation type")),  
+                                                   choices = c( "", "Univariate Gaussian LR" = "gaussian", "Univariate KDE LR" = "kernel" ),  multiple = F),
+                                actionButton("GoEviPredUpload", "Upload", icon("file-import"), width = '100%',
                                             style="color: #fff; background-color: #28bb9b; border-color: #87d5c5" )
                                 )
                         
@@ -369,29 +375,33 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                           ),
                           
                           tabPanel(value = "ePred",
-                                   h5(strong("Prediction")),  
-                                   "Evidence prediction for new observations - coming soon"
+                                   h5(strong("Model predictions")), 
+                                   DT::dataTableOutput("EviPredDataTab") %>% withSpinner(color="#0dc5c1"),
+                                   tags$style(type="text/css", "#EviPredDataTab td:nth-child(1) {text-align:center;background-color:#ffd800;color: black;text-align:center}"),
+                                   tags$style(type="text/css", "#EviPredDataTabtd:nth-child(2) {text-align:center;background-color:#ffb000;color: black;text-align:center}") 
+                          
+                                    
                           )
                           
                           )
                   )
               )
-    ),
+    ) #,
     
     
     ###############################################################
     # Download report
-    tabPanel( title = "Report",
-              icon = icon( "download"),
-              "TBC",
-              tags$br(),
-              "Have a list of methods that the user can select to produce a report. Or a 'add to report' button throught the app",
-              tags$br(),
-              "Make appropriate plots and perhaps a table comparing the selected methods' results.",
-              tags$br(),
-              img(src="NotReady.png", height = 300)
-              
-              )
+    # tabPanel( title = "Report",
+    #           icon = icon( "download"),
+    #           "TBC",
+    #           tags$br(),
+    #           "Have a list of methods that the user can select to produce a report. Or a 'add to report' button throught the app",
+    #           tags$br(),
+    #           "Make appropriate plots and perhaps a table comparing the selected methods' results.",
+    #           tags$br(),
+    #           img(src="NotReady.png", height = 300)
+    #           
+    #           )
 )
 
     
@@ -662,18 +672,18 @@ server <- function( input, output, session) {
                          ClassRes$method <- input$method},
 
                "Logistic regression" = {req(  length( levels( CatData()[, input$varXm] ) ) == 2 ) 
-                                        ClassRes$model <-  RunLR( input$varXm, input$varYm, ClassRes$training_dataset  )
-                                        ClassRes$testing_result <- EvaluateLR( ClassRes$model, ClassRes$testing_dataset ) 
+                                        ClassRes$model <-  try( RunLR( input$varXm, input$varYm, ClassRes$training_dataset  ) )
+                                        ClassRes$testing_result <- try( EvaluateLR( ClassRes$model, ClassRes$testing_dataset ) )
                                         ClassRes$method <- input$method },
 
                "Firth logistic regression" = {req(  length( levels( CatData()[, input$varXm] ) ) == 2 )
-                                              ClassRes$model <-  RunLRF( input$varXm, input$varYm, ClassRes$training_dataset )
-                                              ClassRes$testing_result <- EvaluateLRF( ClassRes$model, ClassRes$testing_dataset ) 
+                                              ClassRes$model <-  try( RunLRF( input$varXm, input$varYm, ClassRes$training_dataset ) )
+                                              ClassRes$testing_result <- try( EvaluateLRF( ClassRes$model, ClassRes$testing_dataset ) )
                                               ClassRes$method <- input$method },
 
                "Multinomial logistic regression" =  {req( length( levels( CatData()[, input$varXm] ) ) > 2 )
-                                                     ClassRes$model <-  RunMLR( input$varXm, input$varYm, ClassRes$training_dataset )
-                                                     ClassRes$testing_result <- EvaluateMLR( ClassRes$model, ClassRes$testing_dataset )
+                                                     ClassRes$model <-  try( RunMLR( input$varXm, input$varYm, ClassRes$training_dataset ) )
+                                                     ClassRes$testing_result <- try( EvaluateMLR( ClassRes$model, ClassRes$testing_dataset ) )
                                                      ClassRes$method <- input$method } #, 
                # "kNN" = {ClassRes$model <- RunKNN(  )}, 
                # "SVM" = {ClassRes$model <- RunSVM(   )}, 
@@ -696,7 +706,7 @@ server <- function( input, output, session) {
                "Logistic regression" = { print( summary( ClassRes$model) ) },
                "Firth logistic regression" = { print( summary( ClassRes$model) )  },
                "Multinomial logistic regression" =  {   print( summary( ClassRes$model) )
-                                                        print(  " p-values ")
+                                                        print(  "p-values ")
                                                         print( ClassRes$model$pval )  } #,
                # "kNN" = {print("TBC") },
                # "SVM" = {print("TBC") },
@@ -707,15 +717,7 @@ server <- function( input, output, session) {
         )
     }) 
     })
-    
-    
-    # User can choose the reference label
-    # output$VarLab <- renderUI ({
-    #     req( input$varXm)
-    #     if ( length( levels( CatData()[, input$varXm ]) ) == 2 )
-    #         selectInput("VarXLab", "Choose your reference label", levels( CatData()[, input$varXm ])  )
-    #   
-    # })
+
     
     # Render model output for the last tab
     output$AnalysisRes <- renderPrint( {   
@@ -743,7 +745,7 @@ server <- function( input, output, session) {
     observeEvent( input$GoPredUpload,  {
         
         # requirements 
-        req ( ClassRes$model, 
+        req ( class( ClassRes$model) != "try-error", 
               names( datasetPred() ) %in%  names( datasetInput() ),
               names( ClassRes$training_dataset) %in%  names( datasetInput() ) )
         
@@ -809,9 +811,9 @@ server <- function( input, output, session) {
                                           "}")  ))
     } )
 
-    # Classification measures and confusion matrix (buggy for uploaded dataset)
+    # Classification measures and confusion matrix 
     output$ConfMat   <- renderDataTable( {
-       
+        req( class(ClassRes$model) != "try-error")
         req( ClassRes$testing_dataset, input$varXm %in% names(ClassRes$testing_dataset) )
         
         cm <- confusionMatrix(  reference = as.factor(ClassRes$testing_dataset[ , input$varXm]) , data = as.factor( ClassRes$testing_result$class ) )
@@ -825,7 +827,7 @@ server <- function( input, output, session) {
 })
 
     output$OverKappa <- renderDataTable( {
-        
+    req( class(ClassRes$model) != "try-error") 
     req(   ClassRes$testing_dataset, input$varXm %in% names(ClassRes$testing_dataset) )
         
     cm <- confusionMatrix(  reference = as.factor(ClassRes$testing_dataset[ , input$varXm]), data = as.factor( ClassRes$testing_result$class ) )
@@ -846,7 +848,7 @@ server <- function( input, output, session) {
 })
 
     output$ByClass  <- renderDataTable( {
-    
+    req( class(ClassRes$model) != "try-error")
     req(   ClassRes$testing_dataset, input$varXm %in% names(ClassRes$testing_dataset) )
         
      cm <- confusionMatrix(  reference = as.factor( ClassRes$testing_dataset[ , input$varXm] ), data = as.factor( ClassRes$testing_result$class ) )
@@ -907,7 +909,8 @@ server <- function( input, output, session) {
     
     # Classification data plot
     output$ClassPlot <- renderPlot (
-        {   req( input$varXm, input$varXc, input$varYc, input$varCc,  
+        {   req( class(ClassRes$model) != "try-error")
+            req( input$varXm, input$varXc, input$varYc, input$varCc,  
                  ClassRes$training_dataset,  ClassRes$testing_dataset, ClassRes$testing_result$class,
                  names( datasetInput() ) %in% names( ClassRes$training_dataset) )
             
@@ -976,7 +979,7 @@ server <- function( input, output, session) {
 
         } )
 
-    ###### Evidence tab
+    ###### Evidence tab -----
     
     # Initialize the object that contains the model outputs and inputs
     EviRes <- reactiveValues()
@@ -988,6 +991,7 @@ server <- function( input, output, session) {
     EviRes$testing_result   <- NULL
     EviRes$seed <- NULL    # make output dependant on seed if user chooses to input a seed 
     EviRes$predm <- data.frame()
+    EviRes$prediction <- NULL
 
     output$varsYevidence <- renderUI ( {
         verticalLayout( 
@@ -998,22 +1002,19 @@ server <- function( input, output, session) {
         )
     })
     
-    output$addMethods <- renderUI (      
-                if (input$addMethods == TRUE )
-                        selectInput("addMethodsList", "", 
-                                    c("LDA","QDA","Logistic regression", "Firth logistic regression"), 
-                                    multiple = T )
-    )
-            
-    
     observeEvent( input$GoEvidence, {
         
     # Requirements so app doesn't crash or show errors
     req( input$varXe,  length( input$varYe ) > 0, input$EviMethod, input$EviOptions, length ( levels( CatData()[, input$varXe] ) ) == 2,
          as.numeric(input$pTrain) > 0  , as.numeric(input$pValid) > 0  , as.numeric(input$pTest) > 0,
          as.numeric(input$pTrain) < 100, as.numeric(input$pValid) < 100, as.numeric(input$pTest) < 100,
-         as.numeric(input$RepeatN) > 0, as.numeric(input$RepeatN) %% 1 == 0 )
-        
+         as.numeric(input$RepeatN) > 0,  as.numeric(input$RepeatN) %% 1 == 0 )
+    
+    # set random seed  
+    EviRes$seed <- input$ESeed
+    set.seed(EviRes$seed )  
+    
+    EviRes$predm <- data.frame()    
     # Repetitions loop        
     for ( i in 1 :  input$RepeatN ){
         
@@ -1026,7 +1027,7 @@ server <- function( input, output, session) {
         # for each LR method, produce and store performance measure
         for ( j in 1 : length( input$EviMethod) ) {
             for( k in 1 : length( input$EviOptions) ) {
-                p <- try (EvRun( EviRes$training_dataset, EviRes$validation_dataset, EviRes$testing_dataset, input$varXe, input$varYe, input$EviMethod[j], input$EviOptions[k]) )
+                p <- try (EvRun( EviRes$training_dataset, EviRes$validation_dataset, EviRes$testing_dataset, input$varXe, input$varYe, input$EviMethod[j], input$EviOptions[k], fmode = "comparison") )
                 if ( class(p) == "data.frame" )
                     EviRes$predm  <- rbind( EviRes$predm, p)
                 #print(input$EviMethod[j] )
@@ -1034,9 +1035,9 @@ server <- function( input, output, session) {
         }
         
         # Run other classification methods as requested by user
-        if ( input$addMethods == TRUE)
+        if ( length( input$addMethodsList ) >=1 )
         {
-            req(input$addMethodsList) 
+            req( input$addMethodsList ) 
             for ( i in 1: length( input$addMethodsList ) )
                 switch(input$addMethodsList[i],
                        "LDA" =  {   EviRes$model <-  try( RunLDA( input$varXe, input$varYe, rbind( EviRes$training_dataset, EviRes$validation_dataset) ))
@@ -1066,11 +1067,13 @@ server <- function( input, output, session) {
                        "Logistic regression" = {
                                     EviRes$model <-  try( RunLR( input$varXe, input$varYe, rbind( EviRes$training_dataset, EviRes$validation_dataset)  ))
                                     EviRes$testing_result <- try( EvaluateLR( EviRes$model, EviRes$testing_dataset ) )
-                                    #print(EviRes$testing_result )
+                                    print("logistic regression")
+                                    # print(EviRes$model )
+                                    # print(EviRes$testing_result )
                                     # Get classification measures for test data
                                     cm <- comp_measures ( actual_class = EviRes$testing_dataset [, input$varXe], model_prediction = EviRes$testing_result$class, LR =  EviRes$testing_result$LR)
-                                    p <- data.frame(  t(cm),  Method = "LogisticReg Class",  EstimationType = "Classification" )
-                                    #print(p)
+                                    p <- data.frame(  t(cm),  Method = "LogReg Class",  EstimationType = "Classification" )
+                                   # print(p)
                                     if ( class(p) == "data.frame" )    
                                         # Add to prediction matrix along all results 
                                         EviRes$predm  <- rbind( EviRes$predm, p)
@@ -1083,7 +1086,7 @@ server <- function( input, output, session) {
                                     # Get classification measures for test data
                                     cm <- comp_measures ( actual_class = EviRes$testing_dataset [, input$varXe], model_prediction = EviRes$testing_result$class, LR =  EviRes$testing_result$LR)
                                     p <- data.frame(  t(cm),  Method = "Firth Class",  EstimationType = "Classification" )
-                                    #print(p)
+                                   # print(p)
                                     if ( class(p) == "data.frame" )
                                         # Add to prediction matrix along all results 
                                         EviRes$predm  <- rbind( EviRes$predm, p)
@@ -1092,6 +1095,90 @@ server <- function( input, output, session) {
                    
     }
 })
+
+    
+    ### Evidence Prediction tab ------
+    # Import data set for prediction
+    datasetEviPred <- eventReactive( input$GoEviPredUpload, 
+                                  { req( input$EviPredData$datapath, input$GoEviPredUpload  )
+                                    if( input$EviPredDataCheck == TRUE ) 
+                                        datasetEviPred <- datasetPred ()
+                                    else    
+                                        datasetEviPred <- import( input$EviPredData$datapath )        
+                                  })
+    
+    
+    #### Error notifications for classification, prediction tab: 
+    observeEvent(input$GoEviPredUpload, {
+        if ( FALSE %in% ( names( datasetEviPred() ) %in%  names( datasetInput() ) )  )
+            showNotification(  "The variables in the uploaded dataset do not match the dataset used for training!", duration = 10, type = "error")
+        
+        # if (  input$EviPredDataCheck == TRUE &  class( try( datasetPred())) != "try-error" )  
+        #     showNotification( "No dataset was previously imported for prediction in the Classification Prediction tab!", duration = 2, type = "error")
+        # 
+        
+        if( input$EviPredMethod == FALSE | input$EviPredOptions == FALSE )
+            showNotification( "Choose options for the prediction method!", duration = 2, type = "error")
+        })
+    
+  
+    # Evidence Prediction for selected method -----
+    observeEvent( input$GoEviPredUpload,  {
+        
+        EviRes$prediction <- NULL
+        
+        # requirements
+        req ( names( datasetEviPred() ) %in%  names( datasetInput() ),
+              input$EviPredMethod, 
+              input$EviPredOptions)
+
+        p <- try ( EvRun( datasetInput(), datasetInput(), datasetEviPred(), input$varXe, input$varYe, input$EviPredMethod, input$EviPredOptions, fmode = "prediction") )
+        if ( class(p) == "data.frame" )
+            EviRes$prediction  <- p
+
+    } )
+    
+    
+    ### Generate dataset table to display the data uploaded for prediction
+    output$EviPredDataTab <- renderDataTable( {
+        
+        req( EviRes$prediction, 
+             names( datasetEviPred() ) %in%  names( datasetInput() ) )
+        
+        evd <- cbind( Prediction = EviRes$prediction$class, LR =  prettyNum( EviRes$prediction$LR, format = "fg", digits =3), datasetEviPred() ) 
+        DT:: datatable ( evd,  rownames = F,
+                         options = list(lengthMenu = c(5, 10, 15),
+                                        pageLength = 5, scrollX = TRUE,
+                                        initComplete = JS(
+                                            "function(settings, json) {",
+                                            "$(this.api().table().header()).css({'background-color': '#556271', 'color': '#fff'});",
+                                            "}")  ))
+        
+        
+        # req( ClassRes$prediction$class, names( datasetPred() ) %in%  names( datasetInput() ) )
+        # dataset <- cbind( Prediction = ClassRes$prediction$class, LR =  round(ClassRes$prediction$LR, 5), datasetPred() )
+        # out <- tryCatch( 
+        #     DT::datatable (dataset, rownames = F,
+        #                    options = list(lengthMenu = c(5, 10, 15),
+        #                                   pageLength = 5, scrollX = TRUE,
+        #                                   initComplete = JS(
+        #                                       "function(settings, json) {",
+        #                                       "$(this.api().table().header()).css({'background-color': '#556271', 'color': '#fff'});",
+        #                                       "}")  ),
+        #                    callback = JS("var tips = [             
+        #                                  'Predicted class label using the model chosen',
+        #                                  'Likelihood Ratio - currently only available for binary classification'
+        #                                  ],
+        #                                  header = table.columns().header();
+        #                                  for (var i = 0; i < 2; i++) {
+        #                                  $(header[i]).attr('title', tips[i]);
+        #                                  }
+        #                                  ")),
+        #     error = function(e) NULL)
+        # return( out )
+    } )
+    
+    ## 
 
     
     ### Error notifications for evidence tab: 
@@ -1115,8 +1202,10 @@ server <- function( input, output, session) {
         if ( as.numeric(input$RepeatN) <= 0 )
             showNotification(  "The number of repetitions has to be a positive integer!", duration = 2, type = "error")
         
-        if ( input$addMethods == TRUE & !( length( input$addMethodsList) > 0)  )
-            showNotification(  "Choose at least one method from the list of additional classification methods!", duration = 2, type = "error")
+        if ( input$ESeed %% 1 != 0 |  input$ESeed <=0)
+            showNotification(  "The random seed should be a positive integer!", duration = 2, type = "error")
+        
+        
         
     })
 
@@ -1139,7 +1228,7 @@ server <- function( input, output, session) {
     } )
 
     
-        # Displaying a table of the computed measures for all selected methods and estimation types
+    # Displaying a table of the computed measures for all selected methods and estimation types
     output$evidence_results <- renderDataTable( {
         req( dim(EviRes$predm)[1] > 0, isolate( input$GoEvidence) )
         cm <- EviRes$predm
@@ -1153,6 +1242,8 @@ server <- function( input, output, session) {
                                            "}")  ))
     } )
 
+    
+    ##### Evidence Comparison plots ----
     ## Plots of the measures computed: Generating the output list for the plots for each measure computed
     observeEvent(input$GoEvidence,
                  output$EviPlots <- renderUI({
@@ -1165,46 +1256,47 @@ server <- function( input, output, session) {
     
     observeEvent(input$GoEvidence, {
         req( dim(EviRes$predm)[1] >0 )
+        
         output$EviPlots1 <- renderPlot( {
             CM <- EviRes$predm
             ggplot( CM, aes( x =  Method, y = Precision ) ) +
-                geom_boxplot( aes(fill =  EstimationType )) + theme(legend.position="bottom")
+                geom_boxplot( aes(fill =  EstimationType, col =  EstimationType), alpha =0.7) + theme(legend.position="bottom")
         })
         
         output$EviPlots2 <- renderPlot( {
             CM <- EviRes$predm
             ggplot( CM , aes( x =  Method, y = Recall ) ) +
-                geom_boxplot( aes(fill =  EstimationType )) + theme(legend.position="bottom")
+                geom_boxplot( aes(fill =  EstimationType, col =  EstimationType), alpha =0.7) + theme(legend.position="bottom")
         })
         
         output$EviPlots3 <- renderPlot( {
             CM <- EviRes$predm
             ggplot( CM , aes( x =  Method, y = Specificity ) ) +
-                geom_boxplot( aes(fill =  EstimationType )) + theme(legend.position="bottom")
+                geom_boxplot( aes(fill =  EstimationType, col =  EstimationType ), alpha =0.7) + theme(legend.position="bottom")
         })
         
         output$EviPlots4 <- renderPlot( {
             CM <- EviRes$predm
             ggplot( CM , aes( x =  Method, y = Accuracy ) ) +
-                geom_boxplot( aes(fill =  EstimationType )) + theme(legend.position="bottom")
+                geom_boxplot( aes(fill =  EstimationType, col =  EstimationType ), alpha =0.7) + theme(legend.position="bottom")
         })
         
         output$EviPlots5 <- renderPlot( {
             CM <- EviRes$predm
             ggplot( CM , aes( x =  Method, y = F1 ) ) +
-                geom_boxplot( aes(fill =  EstimationType )) + theme(legend.position="bottom")
+                geom_boxplot( aes(fill =  EstimationType, col =  EstimationType ), alpha =0.7 ) + theme(legend.position="bottom")
         })
         
         output$EviPlots6 <- renderPlot( {
             CM <- EviRes$predm
             ggplot( CM , aes( x =  Method, y = MissClassification ) ) +
-                geom_boxplot( aes(fill =  EstimationType )) + theme(legend.position="bottom")
+                geom_boxplot( aes(fill =  EstimationType, col =  EstimationType ), alpha =0.7 ) + theme(legend.position="bottom")
         })
         
         output$EviPlots7 <- renderPlot( {
             CM <- EviRes$predm
             ggplot( CM , aes( x =  Method, y = Ece ) ) +
-                geom_boxplot( aes(fill =  EstimationType )) + theme(legend.position="bottom")
+                geom_boxplot( aes(fill =  EstimationType, col =  EstimationType) , alpha =0.7 ) + theme(legend.position="bottom")
         })
     })
     

@@ -115,7 +115,7 @@ EvaluateLR <- function ( model, testing_dataset )
     lab <- levels ( model$model[,1] )
     
     # predicted class labels
-    class <- ifelse( p > 0.5, lab[2], lab[1])
+    class <- as.factor(ifelse( p > 0.5, lab[2], lab[1]))
     
     # predicted LR 
     LR <-  p/ (1-p) 
@@ -126,7 +126,7 @@ EvaluateLR <- function ( model, testing_dataset )
 
 
 # Firth logistic regression classifier
-RunLRF <- function ( varX, varY, dataset, VarXLab  )
+RunLRF <- function ( varX, varY, dataset   )
 {   
     dataset[, varX] <- as.factor( dataset[, varX] )
     f <- NULL
@@ -135,6 +135,9 @@ RunLRF <- function ( varX, varY, dataset, VarXLab  )
     f <- as.formula(   paste(outcome, paste(variables, collapse = " + "),  sep = " ~ "))
     
     m <-  logistf( formula = f, data = dataset)
+   
+  #  summary(m)
+
     return( m )
 }
 
@@ -153,7 +156,7 @@ EvaluateLRF <- function (  model, testing_dataset)
     lab <- levels ( model$y )
 
     # predicted class labels
-    class <- ifelse( p > 0.5, lab[2], lab[1])
+    class <- as.factor( ifelse( p > 0.8, lab[2], lab[1]))
      
     return( list( class =  class, LR = LR  ) )
 }
@@ -389,11 +392,11 @@ mod_bayes_glm <- function( lLR, lLR_p, valid, varXm)
 mod_firth <- function( lLR, lLR_p, valid, varXm)
 {
    
-    valid[ ,varXm] <- as.factor( valid[ ,varXm] )
+    valid[ , varXm] <- as.factor( valid[ , varXm] )
     
     # fit Firth logisitic regression
     model_firth <- logistf(  valid[ ,varXm] ~ lLR )
-
+    #summary(model_firth )
     # predictions (probability of class membership)
     mlLR_p <- cbind( 1, lLR_p)
     
@@ -403,11 +406,12 @@ mod_firth <- function( lLR, lLR_p, valid, varXm)
     # probability of class membership
     pred_firth <- exp( model_firth$coefficients %*%  t(mlLR_p) ) / ( 1 +  exp( model_firth$coefficients %*%  t(mlLR_p) ))
     
+    
     # Factor labels 
     Flab <- levels( valid[ ,varXm] )
     
     # class
-    pred_firth_class <- ifelse( pred_firth > 0.5, Flab[2], Flab[1])
+    pred_firth_class <- ifelse( pred_firth > 0.8, Flab[2], Flab[1])
     
     return( data.frame( class = as.factor(pred_firth_class), LR = exp( c(logLR  )) ) )
     
@@ -418,17 +422,19 @@ comp_measures <- function ( actual_class, model_prediction, LR)
 {
     actual_class <- as.factor(actual_class)
     dataset <- NULL
-    dataset$Actual    <- ifelse( actual_class == levels ( actual_class)[1],  0, 1) 
-    dataset$Predicted <- ifelse( model_prediction == levels ( model_prediction)[1],  0, 1) 
+    dataset$Actual    <- ifelse( actual_class == levels ( actual_class)[1],  0, 1)
+    dataset$Predicted <- ifelse( model_prediction == levels ( actual_class)[1],  0, 1) 
     dataset$Odds      <- LR
-    print(dataset)
+
  
-    #return ( list ( actual_class, model_prediction, dataset)) 
     # odds for class "1" in the test set
     LR.same <- dataset$Odds [ dataset$Actual == 1]
-
+    
+  
     # odds for class "0" in the test set
     LR.different <- dataset$Odds [ dataset$Actual == 0]
+   
+    #####
 
     # calculate the ECE/ CLLR
     ece <- calc.ece(LR.same, LR.different, prior = 0.5 )
@@ -460,7 +466,7 @@ comp_measures <- function ( actual_class, model_prediction, LR)
   
 }
 
-EvRun <- function( train, valid, test, varXm, varYe, method, method2) 
+EvRun <- function( train, valid, test, varXm, varYe, method, method2, fmode = "comparison") 
 {
     # get LR matrices for the variables selected, using either gaussian or kernel method (method2 option)
     # lLR matrix of LRs for validation data, lLR_p matri of LRs for prediction data
@@ -469,25 +475,41 @@ EvRun <- function( train, valid, test, varXm, varYe, method, method2)
     
     
     # Fit selected model (indicated in method) to the LR matrices
-    if ( method == "firth"){
+    if ( method == "FirthGlm"){
         m <- try( mod_firth( lLR, lLR_p, valid, varXm) )
         
-    }else if (method == "bayes"){
+    }else if (method == "BayesGlm"){
             m <- try( mod_bayes_glm( lLR, lLR_p, valid, varXm) )
 
-        }else if (method == "net") {
+        }else if (method == "GlmNet") {
                 m <- try ( mod_glm_net( lLR, lLR_p, valid, varXm) )
         }
     
-    # Get classification measures for test data
-    cm <- comp_measures ( actual_class = test[, varXm], model_prediction = m$class, LR = m$LR)
+    if ( fmode == "comparison"){
+        if ( class(m) != "try-error"){
+            # Get classification measures for test data
+            cm <- comp_measures ( actual_class = test[, varXm], model_prediction = m$class, LR = m$LR)
+            
+            # Add method and LR estimation method to the return values
+            cmm <- data.frame(  t(cm),  Method = method,  EstimationType = method2 )
+            
+            colnames(cmm)[1:7] <- c( "Precision", "Recall", "Specificity", "Accuracy",  "F1",  "MissClassification",  "Ece")
+            
+            return( cmm )
+        }
+        else
+            return( NULL )
+    }
+    else
+        if (fmode == "prediction")
+            if ( class(m) != "try-error")
+            {   print( data.frame(m) )
+                print( class(data.frame(m)))
+                return( data.frame(m) )
+            }
     
-    # Add method and LR estimation method to the return values
-    cmm <- data.frame(  t(cm),  Method = method,  EstimationType = method2 )
-    
-    colnames(cmm)[1:7] <- c( "Precision", "Recall", "Specificity", "Accuracy",  "F1",  "MissClassification",  "Ece")
-    
-    return(cmm)
+            else
+                return( NULL )
 }
 
 # # SVM classifier
