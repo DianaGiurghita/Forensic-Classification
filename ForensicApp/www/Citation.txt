@@ -1,0 +1,16 @@
+@Manual{giurghitaShiny ,
+        title  = {Forensic Classification {R} Shiny App},
+        author = {Diana Giurghita and Tereza Neocleous and Giulia Biosa and Eugenio Alladio and Marco Vincenti},
+        year = {2020},
+        note = { \url{https://dianagiurghita.shinyapps.io/ForensicClassification/ }},
+		url  = { \url{https://dianagiurghita.shinyapps.io/ForensicClassification/ }} 
+}
+		
+@article{biosaEval,
+   		author = {Giulia Biosa and Diana Giurghita and Eugenio Alladio and Marco Vincentia and Tereza Neocleous},
+   	 	title = {Evaluation of forensic data using logistic regression-based classification methods and an {R} Shiny implementation},
+   	 	journal = {Manuscript under review},
+   	 	volume = { },
+   	 	year = {2020},
+   	 	pages={ }
+}

@@ -4,6 +4,7 @@ Immediate fixes (for paper deadline):
 - D: glmnet estimation problems	
 - T: add other relevant logos from Eugenio
 - T: app crashing when using multivariate lr
+- D: change logistf package to brglm2 - a more stable implementation of Firth's log reg
 - [Identified] T: In the Likelihood ratio tab, when I choose all three methods the results only list bayes and net. Surely one of those should be firth? D: Firth log regression gives class membership probablities that are typically greater than 0.5, which means the regulr threshold of 0.5 results in a poor classification. We need a more automated method 
 - D: glass crashes app when choosing QDA and multinomial.
 - [ADDED] D: add prediction for new data in the LR tab
@@ -26,6 +27,7 @@ Immediate fixes (for paper deadline):
 
 
 Additional fixes/features for later:
+- D: brglm2 provides bias reduction for multinomial methods too. 
 - when clicking on top tab names, reset view to first conditional panels
 - D: diabetes does not work with Firth logistic regression
 - additional methods for classification: knn, naive Bayes, random forests, neural networks etc.

@@ -1,0 +1,13 @@
+name: ForensicClassification
+title: ForensicClassification
+username:
+account: dianagiurghita
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2055214
+bundleId: 2978809
+url: https://dianagiurghita.shinyapps.io/ForensicClassification/
+when: 1586227232.9859
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: ijerph-16-04658-v2.pdf

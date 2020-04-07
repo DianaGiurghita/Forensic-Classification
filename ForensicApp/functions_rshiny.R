@@ -59,6 +59,8 @@ EvaluateLDA <- function ( model, testing_dataset )
     # If the model has binary outcome, produce an LR p/(1-p)
     LR <- NA
     if ( length( model$lev ) == 2)
+		# This should probably be [,2]!! Check
+		
         LR <- Predict_result$posterior[,1] / ( 1 - Predict_result$posterior[,1] )
     
     return( list( class = Predict_result$class, LR = LR) )
@@ -84,6 +86,8 @@ EvaluateQDA <- function ( model, testing_dataset )
     
     # If the model has binary outcome, produce an LR p/(1-p)
     LR <- NA
+	
+	# This should probably be [,2]!! Check
     if ( length( model$lev ) == 2)
         LR <- Predict_result$posterior[,1] / ( 1 - Predict_result$posterior[,1] )
     

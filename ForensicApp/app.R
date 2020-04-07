@@ -59,39 +59,47 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                                    tags$br(),
                                    tags$p(
                                        tags$img(height = 50, src = "UoG.png")),
-                                   tags$h1("About"),
+                                   tags$h3("About"),
                                    tags$body("This app provides a flexible tool for classification 
                                              and allows the user to input their own dataset in a .txt 
                                              or .csv format."  ),
-                                   # tags$h1("Methodology"),
                                    tags$body("Classification methods implemented in this app include 
-                                             standard multivariate methods such as Linear Discriminant 
+                                             standard multivariate methods such as Linear and Quadratic Discriminant 
                                              Analysis, likelihood ratio and logistic regression-based 
-                                             approaches.
+                                             approaches, with a focus on penalised logistic regression methods, such a Firth logistic regression, Bayes GLM and GLM-NET.
                                              Numerical and visual summaries of the classification results
-                                             are also provided.",
-                                             # tags$ul( tags$li(" "), 
-                                             #          tags$li(" "),
-                                             #          tags$li(" "),
-                                             #          tags$li(" ")
-                                             #          
-                                             #        ),
-                                    tags$h1("References"),
+                                             are also provided."),
+                                             
+                                    # tags$h3("Methodology"), 
+                                    # tags$body("The following methods are used in this app",
+                                    #          tags$ul(  tags$li("Firth GLM"), 
+                                    #                    tags$li("Bayes GLM"),
+                                    #                    tags$li("GLM-NET"),
+                                    #                    tags$li("standard methods: LDA, QDA, logistic regression")
+                                    #                    
+                                    #                  )
+                                    #          ),
+                                           
+                                    tags$h3("References and citing this app"),
+                                    tags$br(),
                                              " For more details about the methods available in this app, 
-                                               please refer to our paper ...
-                                               For a detailed description of the alcohol dataset please see ...",
-                                    tags$h1("Citation info"),
-                                             " You can cite this app as ... (download reference here)."
-                                             )
-                                   ), 
+                                               please refer to our paper:",     
+                                    tags$br(),
+                                    tags$div(
+                                        HTML("Biosa, G., Giurghita, D., Alladio, E., Vincenti, M., Neocleous, T. (2020).
+                                    <i> Evaluation of forensic data using logistic regression-based classification methods and an R Shiny implementation</i>, Manuscript under review")),
+                                    tags$body( "You can download citations for this app and our paper ", 
+                                        a("here", target="_blank", href="Citation.txt") 
+                                        )),
+                                    
                           
                           tabPanel("Credits", 
                                    tags$br(),
-                                   "This app was developed by Diana Giurghita,  with contributions from 
+                                   "This app was developed by Diana Giurghita, with contributions from 
                                     Giulia Biosa, Eugenio Alladio, Tereza Neocleous and Tejaswini Reddy. 
                                     We thank ", tags$em("Dimitra Eleftheriou"), " and ",
                                     tags$a( href ="https://chenjr-jacob.idv.tw", "Jacob Chen"), 
-                                    "whose shiny apps were used as a reference."
+                                    "whose Shiny apps were used as a reference."
                                    )
                         )
              
@@ -378,7 +386,7 @@ ui <- navbarPage( theme = shinytheme("flatly"),
                                    h5(strong("Model predictions")), 
                                    DT::dataTableOutput("EviPredDataTab") %>% withSpinner(color="#0dc5c1"),
                                    tags$style(type="text/css", "#EviPredDataTab td:nth-child(1) {text-align:center;background-color:#ffd800;color: black;text-align:center}"),
-                                   tags$style(type="text/css", "#EviPredDataTabtd:nth-child(2) {text-align:center;background-color:#ffb000;color: black;text-align:center}") 
+                                   tags$style(type="text/css", "#EviPredDataTab td:nth-child(2) {text-align:center;background-color:#ffb000;color: black;text-align:center}") 
                           
                                     
                           )
