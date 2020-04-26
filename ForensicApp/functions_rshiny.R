@@ -127,7 +127,30 @@ EvaluateLR <- function ( model, testing_dataset )
     return( list( class =  class, LR = LR ) )
 }
 
-
+# mod_firth <- function( lLR, lLR_p, t_valid_set)
+# {
+#     # put all variables in a matrix or predict will not recognize the data and will return fitted values instead of predictions
+#     datafit <- cbind( lLR, F = t_valid_set$F)
+#     
+#     # fit Firth logisitic regression using the brglm2 package
+#     # sometimes the algorithm doesn not converge (probably because of imbalanced dataset)
+#     model_firth <- glm(  F ~ . , 
+#                          data = datafit, 
+#                          family = "binomial", type = "AS_mean", method = "brglmFit", control = list(maxit=500) ) 
+#     #print( summary(model_firth))
+#     
+#     # class probability 
+#     pred_firth <- predict( model_firth, newdata =  lLR_p, type = "response")
+#     
+#     # logLR given by default type prediction 
+#     LR <- exp( predict( model_firth, newdata = lLR_p ) )
+#     
+#     # class
+#     pred_firth_class <- ifelse( pred_firth >= 0.5, 1, 0)
+#     
+#     return( data.frame( class = c(pred_firth_class), LR  = c(LR )) )
+#     
+# } 
 
 # Firth logistic regression classifier
 RunLRF <- function ( varX, varY, dataset   )
@@ -138,31 +161,31 @@ RunLRF <- function ( varX, varY, dataset   )
     variables <- varY 
     f <- as.formula(   paste(outcome, paste(variables, collapse = " + "),  sep = " ~ "))
     
-    m <-  logistf( formula = f, data = dataset)
-   
-  #  summary(m)
-
+    m <-  glm(  formula = f, 
+          data = dataset, 
+          family = "binomial", type = "AS_mean", method = "brglmFit", control = list(maxit=500) ) 
+    
     return( m )
 }
 
 # Evaluate Firth logistic regression classifier
 EvaluateLRF <- function (  model, testing_dataset)
 {
-    m <- matrix( ncol = length( model$coefficients) )
-    m <- cbind( 1, testing_dataset[ , names( model$coefficients )[-1]  ])
     
-    p <- c( exp(  model$coefficients %*%  t(m) ) / ( 1 +  exp( model$coefficients  %*%  t(m) )))
+    # class probability 
+    p <- predict( model, newdata = testing_dataset, type = "response")
     
-    # LR 
-    LR <- p/(1-p)
+    # logLR given by default type prediction so we exp() for LR
+    LR <- exp( predict( model, newdata = testing_dataset) )
     
-    # Class lables
-    lab <- levels ( model$y )
-
-    # predicted class labels
-    class <- as.factor( ifelse( p > 0.8, lab[2], lab[1]))
-     
-    return( list( class =  class, LR = LR  ) )
+    # Class labels
+    lab <- levels ( model$model[,1])
+    
+    # Predicted class labels with 0.5 cutoff point
+    pred_firth_class <- ifelse( p >= 0.5, lab[2], lab[1])
+    
+    return( data.frame( class = c(pred_firth_class), LR  = c(LR )) )
+    
 }
 
 # Multinomial logistic regression classifier
@@ -392,33 +415,52 @@ mod_bayes_glm <- function( lLR, lLR_p, valid, varXm)
 }
 
 
-### FGLM:Returns predicted class using Firth LR
+### FGLM: Returns predicted class using Firth LR
 mod_firth <- function( lLR, lLR_p, valid, varXm)
 {
    
     valid[ , varXm] <- as.factor( valid[ , varXm] )
     
+    # put all variables in a matrix or predict will not recognize the data and will return fitted values instead of predictions
+    datafit <- data.frame( lLR, F = valid[, varXm])
+    
     # fit Firth logisitic regression
-    model_firth <- logistf(  valid[ ,varXm] ~ lLR )
-    #summary(model_firth )
-    # predictions (probability of class membership)
-    mlLR_p <- cbind( 1, lLR_p)
+    # sometimes the algorithm doesn not converge (probably because of imbalanced dataset)
+    model_firth <- glm(  F ~ . , 
+                         data = datafit, 
+                         family = "binomial", type = "AS_mean", method = "brglmFit", control = list(maxit=500) ) 
     
-    # log LR i.e. response
-    logLR <- c( model_firth$coefficients  %*%  t( mlLR_p) ) 
+    # class probability 
+    pred_firth <- predict( model_firth, newdata =  data.frame(lLR_p), type = "response")
     
-    # probability of class membership
-    pred_firth <- exp( model_firth$coefficients %*%  t(mlLR_p) ) / ( 1 +  exp( model_firth$coefficients %*%  t(mlLR_p) ))
-    
+    # logLR given by default type prediction 
+    LR <- exp( predict( model_firth, newdata = data.frame(lLR_p) ) )
     
     # Factor labels 
     Flab <- levels( valid[ ,varXm] )
     
     # class
-    pred_firth_class <- ifelse( pred_firth > 0.8, Flab[2], Flab[1])
+    pred_firth_class <- ifelse( pred_firth >= 0.5, Flab[2], Flab[1])
     
-    return( data.frame( class = as.factor(pred_firth_class), LR = exp( c(logLR  )) ) )
+    return( data.frame( class = c(pred_firth_class), LR  = c(LR )) )
+    #######
+   
     
+    # log LR i.e. response
+    # logLR <- c( model_firth$coefficients  %*%  t( mlLR_p) ) 
+    # 
+    # # probability of class membership
+    # pred_firth <- exp( model_firth$coefficients %*%  t(mlLR_p) ) / ( 1 +  exp( model_firth$coefficients %*%  t(mlLR_p) ))
+    # 
+    # 
+    # # Factor labels 
+    # Flab <- levels( valid[ ,varXm] )
+    # 
+    # # class
+    # pred_firth_class <- ifelse( pred_firth > 0.8, Flab[2], Flab[1])
+    # 
+    # return( data.frame( class = as.factor(pred_firth_class), LR = exp( c(logLR  )) ) )
+    # 
 }  
 
 # Classification performance measures

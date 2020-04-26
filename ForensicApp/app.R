@@ -23,6 +23,7 @@ library(mlbench)
 library(nnet)
 library(gridExtra)
 library(plotly)
+library(brglm2)
 
 # set working directory and source functions_rshiny.R 
 source("functions_rshiny.R")
